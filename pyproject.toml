@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "heliospice"
+version = "0.1.0"
+description = "Spacecraft ephemeris made easy — auto-managed SPICE kernels for heliophysics missions"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Zesen Huang" },
+]
+keywords = ["spice", "spacecraft", "ephemeris", "heliophysics", "solar", "naif", "trajectory"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "spiceypy>=6.0.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.26.0"]
+dev = [
+    "pytest>=7.0",
+    "mcp>=1.26.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/huangzesen/heliospice"
+Repository = "https://github.com/huangzesen/heliospice"
+Issues = "https://github.com/huangzesen/heliospice/issues"
+
+[project.scripts]
+heliospice-mcp = "heliospice.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/heliospice"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
