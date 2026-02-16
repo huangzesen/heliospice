@@ -172,3 +172,5 @@ Add to `claude_desktop_config.json`:
 ## License
 
 MIT
+
+<!-- mcp-name: io.github.huangzesen/heliospice-mcp -->
