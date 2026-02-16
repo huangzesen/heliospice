@@ -38,22 +38,18 @@ Kernels are automatically downloaded from [NAIF](https://naif.jpl.nasa.gov/) on 
 
 ## Supported Missions
 
-### Heliophysics
-- **PSP** (Parker Solar Probe)
-- **Solar Orbiter** (SOLO)
-- **ACE**
-- **Wind**
-- **DSCOVR**
-- **MMS** (1-4)
-- **STEREO-A/B**
+### With SPICE Kernels (auto-downloaded)
+- **PSP** (Parker Solar Probe) — 2018-2030
+- **Solar Orbiter** (SOLO) — 2020-2030
+- **STEREO-A** — 2017-2031
+- **Juno** — 2011-present (updated regularly)
+- **Voyager 1/2** — 1981-2100 / 1989-2100
+- **New Horizons** — 2019-2030
 
-### Planetary
-- **Cassini**
-- **Juno**
-- **Voyager 1/2**
-- **MAVEN**
-- **New Horizons**
-- **Galileo**, **Pioneer 10/11**, **Ulysses**, **MESSENGER**
+### NAIF IDs Only (no auto-download yet)
+- **ACE**, **Wind**, **DSCOVR**, **MMS** (1-4) — no public SPK kernels exist
+- **Cassini**, **MAVEN** — require multi-segment kernel loading (planned)
+- **Galileo**, **Pioneer 10/11**, **Ulysses**, **MESSENGER**, **STEREO-B**
 
 ### Natural Bodies
 Sun, Earth, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto

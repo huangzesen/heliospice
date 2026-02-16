@@ -17,7 +17,7 @@ MISSION_NAIF_IDS: dict[str, int] = {
     "SOLO": -144,
     "ACE": -92,
     "WIND": -8,
-    "DSCOVR": -135,
+    "DSCOVR": -78,
     "MMS1": -189,
     "MMS2": -190,
     "MMS3": -191,
@@ -102,75 +102,51 @@ GENERIC_KERNELS: dict[str, str] = {
 # Some also need FK (frame kernel), SCLK (clock kernel), etc.
 MISSION_KERNELS: dict[str, dict[str, str]] = {
     "PSP": {
-        "spp_nom_20180812_20250831_v039_RO6.bsp": (
-            f"{_NAIF_BASE}/pds/parker_solar_probe/data/spice/spk/"
-            "spp_nom_20180812_20250831_v039_RO6.bsp"
+        "spp_nom_20180812_20300101_v043_PostV7.bsp": (
+            "https://cdaweb.gsfc.nasa.gov/pub/data/psp/ephemeris/spice/ephemerides/"
+            "spp_nom_20180812_20300101_v043_PostV7.bsp"
         ),
     },
     "SOLO": {
-        "solo_ANC_soc-orbit-stp_20200210-20301120_341_V1_00384_V01.bsp": (
-            f"{_NAIF_BASE}/SOLAR_ORBITER/kernels/spk/"
-            "solo_ANC_soc-orbit-stp_20200210-20301120_341_V1_00384_V01.bsp"
-        ),
-    },
-    "ACE": {
-        "ace_2002-2026_v006.bsp": (
-            f"{_NAIF_BASE}/pds/aces/data/spice/spk/"
-            "ace_2002-2026_v006.bsp"
-        ),
-    },
-    "WIND": {
-        "wind_2024.bsp": (
-            f"{_NAIF_BASE}/pds/wind/data/spice/spk/"
-            "wind_2024.bsp"
-        ),
-    },
-    "DSCOVR": {
-        "dscovr_ephem_def.bsp": (
-            f"{_NAIF_BASE}/pds/dscovr/data/spice/spk/"
-            "dscovr_ephem_def.bsp"
+        "solo_ANC_soc-orbit-stp_20200210-20301120_399_V1_00513_V01.bsp": (
+            "https://spiftp.esac.esa.int/data/SPICE/SOLAR-ORBITER/kernels/spk/"
+            "solo_ANC_soc-orbit-stp_20200210-20301120_399_V1_00513_V01.bsp"
         ),
     },
     "STEREO_A": {
-        "ahead_2024_305_01.epm.bsp": (
-            f"{_NAIF_BASE}/STEREO/kernels/spk/"
-            "ahead_2024_305_01.epm.bsp"
+        "ahead_2017_061_5295day_predict.epm.bsp": (
+            "https://sohoftp.nascom.nasa.gov/solarsoft/stereo/gen/data/spice/epm/ahead/"
+            "ahead_2017_061_5295day_predict.epm.bsp"
         ),
     },
-    "CASSINI": {
-        "cas_2004_2017.bsp": (
-            f"{_NAIF_BASE}/pds/data/co-s_j_e_v-spice-6-v1.0/cosp_1000/data/spk/"
-            "cas_2004_2017.bsp"
-        ),
-    },
+    # NOTE: Cassini requires ~200 SCPSE segment files from NAIF PDS archive.
+    # Not yet supported — needs multi-file kernel loading.
+    # See: https://naif.jpl.nasa.gov/pub/naif/pds/data/co-s_j_e_v-spice-6-v1.0/cosp_1000/data/spk/
     "JUNO": {
-        "juno_pred_orbit.bsp": (
-            f"{_NAIF_BASE}/pds/juno/data/spice/spk/"
-            "juno_pred_orbit.bsp"
+        "juno_rec_orbit.bsp": (
+            f"{_NAIF_BASE}/JUNO/kernels/spk/"
+            "juno_rec_orbit.bsp"
         ),
     },
     "VOYAGER_1": {
-        "vgr1_jup230.bsp": (
-            f"{_NAIF_BASE}/pds/data/vg1-j_s-spice-6-v1.0/vgsp_1000/data/spk/"
-            "vgr1_jup230.bsp"
+        "vgr1.x2100.bsp": (
+            f"{_NAIF_BASE}/VOYAGER/kernels/spk/"
+            "vgr1.x2100.bsp"
         ),
     },
     "VOYAGER_2": {
-        "vgr2_jup230.bsp": (
-            f"{_NAIF_BASE}/pds/data/vg2-j_s_u_n-spice-6-v1.0/vgsp_1000/data/spk/"
-            "vgr2_jup230.bsp"
+        "vgr2.x2100.bsp": (
+            f"{_NAIF_BASE}/VOYAGER/kernels/spk/"
+            "vgr2.x2100.bsp"
         ),
     },
-    "MAVEN": {
-        "maven_orb_rec.bsp": (
-            f"{_NAIF_BASE}/pds/maven/data/spice/spk/"
-            "maven_orb_rec.bsp"
-        ),
-    },
+    # NOTE: MAVEN kernels on NAIF are individual quarterly segments, not merged.
+    # Full coverage requires loading ~50 segment files. Not yet supported.
+    # See: https://naif.jpl.nasa.gov/pub/naif/MAVEN/kernels/spk/
     "NEW_HORIZONS": {
-        "nh_pred_alleph_od151.bsp": (
-            f"{_NAIF_BASE}/pds/newhorizons/data/spice/spk/"
-            "nh_pred_alleph_od151.bsp"
+        "nh_pred_alleph_od161.bsp": (
+            f"{_NAIF_BASE}/pds/data/nh-j_p_ss-spice-6-v1.0/nhsp_1000/data/spk/"
+            "nh_pred_alleph_od161.bsp"
         ),
     },
 }
