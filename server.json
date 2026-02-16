@@ -1,19 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.huangzesen/heliospice-mcp",
+  "name": "io.github.huangzesen/heliospice",
   "title": "HelioSPICE",
-  "description": "Spacecraft ephemeris and trajectory lookup — auto-managed SPICE kernels for heliophysics missions (PSP, Solar Orbiter, ACE, Cassini, Voyager, and more)",
-  "version": "0.1.1",
-  "websiteUrl": "https://github.com/huangzesen/heliospice",
+  "description": "Spacecraft ephemeris made easy — auto-managed SPICE kernels for heliophysics",
   "repository": {
-    "url": "https://github.com/huangzesen/heliospice"
+    "url": "https://github.com/huangzesen/heliospice",
+    "source": "github"
   },
+  "version": "0.1.2",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "heliospice",
-      "version": "0.1.1",
-      "runtimeHint": "uvx",
+      "version": "0.1.2",
       "transport": {
         "type": "stdio"
       },

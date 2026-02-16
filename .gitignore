@@ -12,3 +12,4 @@ venv/
 .tox/
 .mypy_cache/
 *.so
+.mcpregistry_*

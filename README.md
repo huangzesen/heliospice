@@ -173,4 +173,4 @@ Add to `claude_desktop_config.json`:
 
 MIT
 
-<!-- mcp-name: io.github.huangzesen/heliospice-mcp -->
+<!-- mcp-name: io.github.huangzesen/heliospice -->
