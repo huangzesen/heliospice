@@ -48,16 +48,18 @@ def _create_server() -> "FastMCP":
         "spice-ephemeris",
         instructions=(
             "SPICE ephemeris server for spacecraft position and trajectory queries. "
-            "Supports heliophysics missions (PSP, ACE, Solar Orbiter, Wind, DSCOVR, "
-            "MMS, STEREO-A) and planetary missions (Cassini, Juno, Voyager 1/2, "
-            "MAVEN, New Horizons, etc.). Kernels are auto-downloaded from NAIF on "
-            "first use. Use list_coordinate_frames to see available coordinate frames "
-            "before querying — frame is a required parameter. Use "
-            "get_spacecraft_position for position at a single time, "
-            "get_spacecraft_trajectory for position timeseries, "
-            "get_spacecraft_velocity for velocity timeseries, "
-            "compute_distance for distances between bodies, and "
-            "transform_coordinates for frame transforms."
+            "Supports 36 spacecraft: heliophysics missions (PSP, Solar Orbiter, SOHO, "
+            "IBEX, STEREO-A/B, Helios 1/2, Ulysses, Van Allen Probes A/B, THEMIS A–E) "
+            "and planetary/deep-space missions (Cassini, Juno, Voyager 1/2, MAVEN, "
+            "New Horizons, Galileo, Pioneer 10/11, MESSENGER, Dawn, Lucy, Europa Clipper, "
+            "Psyche, JUICE, BepiColombo, Venus Express, Pioneer Venus, InSight, MRO, "
+            "Mars 2020, LRO, Lunar Prospector, MGS). ACE, Wind, and DSCOVR have NAIF IDs "
+            "but no SPK kernels. Kernels are auto-downloaded from NAIF on first use. "
+            "Use list_coordinate_frames to see available coordinate frames before "
+            "querying — frame is a required parameter. Use get_spacecraft_position for "
+            "position at a single time, get_spacecraft_trajectory for position timeseries, "
+            "get_spacecraft_velocity for velocity timeseries, compute_distance for "
+            "distances between bodies, and transform_coordinates for frame transforms."
         ),
     )
 
@@ -442,7 +444,7 @@ def _create_server() -> "FastMCP":
         mission: str = "",
         filenames: list[str] | None = None,
     ) -> dict:
-        """Manage SPICE kernels: check status, download, load, clean cache, or purge.
+        """Manage SPICE kernels: check status, download, load, clean cache, check remote, or purge.
 
         Args:
             action: One of:
@@ -451,8 +453,9 @@ def _create_server() -> "FastMCP":
                 - "load" — download + load kernels for a mission
                 - "unload_all" — unload all kernels from memory (keeps files on disk)
                 - "delete" — delete cached files for a mission (requires mission param) or specific files (requires filenames param). Use "GENERIC" as mission to delete generic kernels.
+                - "check_remote" — check remote NAIF directory for new .bsp files not in the configured set (requires mission param, single-file missions only)
                 - "purge" — delete ALL cached kernel files and unload everything
-            mission: Mission name (required for "download", "load", and "delete" by mission)
+            mission: Mission name (required for "download", "load", "delete" by mission, and "check_remote")
             filenames: List of specific filenames to delete (for "delete" action only)
         """
         from .kernel_manager import get_kernel_manager
@@ -524,6 +527,17 @@ def _create_server() -> "FastMCP":
             except Exception as e:
                 return {"status": "error", "message": str(e)}
 
+        elif action == "check_remote":
+            if not mission:
+                return {"status": "error", "message": "mission parameter required for check_remote"}
+            from .missions import resolve_mission
+            try:
+                _, mission_key = resolve_mission(mission)
+                result = km.check_remote_kernels(mission_key)
+                return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+
         elif action == "purge":
             result = km.purge_cache()
             return {"status": "success", **result}
@@ -533,7 +547,7 @@ def _create_server() -> "FastMCP":
                 "status": "error",
                 "message": (
                     f"Unknown action '{action}'. "
-                    f"Use: status, download, load, unload_all, delete, purge"
+                    f"Use: status, download, load, unload_all, delete, check_remote, purge"
                 ),
             }
 

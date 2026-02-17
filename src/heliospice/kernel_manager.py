@@ -14,6 +14,7 @@ import logging
 import os
 import threading
 from datetime import date
+from html.parser import HTMLParser
 from pathlib import Path
 
 import spiceypy as spice
@@ -21,6 +22,21 @@ import spiceypy as spice
 from .missions import GENERIC_KERNELS, MISSION_KERNELS
 
 logger = logging.getLogger("heliospice")
+
+
+class _LinkExtractor(HTMLParser):
+    """Extract href attributes from <a> tags in HTML directory listings."""
+
+    def __init__(self):
+        super().__init__()
+        self.links: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            for name, value in attrs:
+                if name == "href" and value:
+                    self.links.append(value)
+
 
 # ---------------------------------------------------------------------------
 # Singleton
@@ -295,6 +311,84 @@ class KernelManager:
         )
 
     # ------------------------------------------------------------------
+    # Remote kernel checking
+    # ------------------------------------------------------------------
+
+    def check_remote_kernels(self, mission_key: str) -> dict:
+        """Check a remote NAIF directory for .bsp files not in the configured set.
+
+        Only works for single-file missions (not segmented).
+
+        Args:
+            mission_key: Canonical mission key (e.g., "PSP", "JUNO").
+
+        Returns:
+            Dict with mission, configured_files, directories (each with url,
+            all_bsp_files, and optional error), and other_files.
+
+        Raises:
+            KeyError: If mission_key is segmented or has no kernels defined.
+        """
+        from .missions import SEGMENTED_MISSIONS
+
+        if mission_key in SEGMENTED_MISSIONS:
+            raise KeyError(
+                f"Mission '{mission_key}' uses segmented kernels. "
+                f"check_remote_kernels only supports single-file missions."
+            )
+
+        kernels = MISSION_KERNELS.get(mission_key)
+        if kernels is None:
+            raise KeyError(
+                f"No SPICE kernels defined for mission '{mission_key}'. "
+                f"Available: {', '.join(sorted(MISSION_KERNELS.keys()))}"
+            )
+
+        configured_files = sorted(kernels.keys())
+
+        # Derive unique parent directory URLs
+        parent_urls: dict[str, None] = {}  # ordered set
+        for url in kernels.values():
+            parent = url.rsplit("/", 1)[0] + "/"
+            parent_urls[parent] = None
+
+        import requests
+
+        directories = []
+        all_other: list[str] = []
+
+        for dir_url in parent_urls:
+            entry: dict = {"url": dir_url}
+            try:
+                resp = requests.get(dir_url, timeout=30)
+                resp.raise_for_status()
+                parser = _LinkExtractor()
+                parser.feed(resp.text)
+                bsp_files = sorted(
+                    link for link in parser.links
+                    if link.lower().endswith(".bsp")
+                )
+                entry["all_bsp_files"] = bsp_files
+            except Exception as e:
+                entry["all_bsp_files"] = []
+                entry["error"] = str(e)
+                bsp_files = []
+
+            directories.append(entry)
+
+            # Files in directory but not in configured set
+            for f in bsp_files:
+                if f not in configured_files:
+                    all_other.append(f)
+
+        return {
+            "mission": mission_key,
+            "configured_files": configured_files,
+            "directories": directories,
+            "other_files": sorted(set(all_other)),
+        }
+
+    # ------------------------------------------------------------------
     # Cache management
     # ------------------------------------------------------------------
 
@@ -467,3 +561,24 @@ class KernelManager:
             result["errors"] = errors
         logger.info("Purged cache: %d files, %.1f MB freed", deleted, freed / (1024 * 1024))
         return result
+
+
+# ---------------------------------------------------------------------------
+# Module-level convenience functions
+# ---------------------------------------------------------------------------
+
+def check_remote_kernels(mission: str) -> dict:
+    """Check for new kernel files in the remote directory for a mission.
+
+    Resolves the mission name, then checks the remote NAIF directory
+    for .bsp files not in the currently configured set.
+
+    Args:
+        mission: Mission name (e.g., "Juno", "PSP", "Parker Solar Probe").
+
+    Returns:
+        Dict with mission, configured_files, directories, and other_files.
+    """
+    from .missions import resolve_mission
+    _, mission_key = resolve_mission(mission)
+    return get_kernel_manager().check_remote_kernels(mission_key)

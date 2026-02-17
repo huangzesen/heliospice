@@ -197,3 +197,99 @@ class TestKernelManager:
         assert "UNKNOWN" in info["missions"]
         assert info["missions"]["GENERIC"]["file_count"] == 1
         assert info["file_count"] == 2
+
+
+class TestCheckRemoteKernels:
+    """Tests for KernelManager.check_remote_kernels()."""
+
+    NAIF_HTML = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html><head><title>Index of /pub/naif/JUNO/kernels/spk</title></head>
+<body><h1>Index of /pub/naif/JUNO/kernels/spk</h1>
+<pre><a href="/">Parent Directory</a>
+<a href="juno_rec_orbit.bsp">juno_rec_orbit.bsp</a>         2024-03-15 12:00  129M
+<a href="juno_pred_orbit.bsp">juno_pred_orbit.bsp</a>       2024-03-15 12:00   15M
+<a href="juno_rec_orbit_v2.bsp">juno_rec_orbit_v2.bsp</a>   2024-06-01 10:00  135M
+<a href="README.txt">README.txt</a>                         2024-01-01 00:00  1.2K
+</pre></body></html>"""
+
+    @patch("heliospice.kernel_manager.spice")
+    @patch("requests.get")
+    def test_parses_directory_and_finds_other_files(self, mock_get, mock_spice, tmp_path):
+        """Parses NAIF HTML listing and identifies other_files correctly."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        mock_resp = mock_get.return_value
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.text = self.NAIF_HTML
+
+        result = km.check_remote_kernels("JUNO")
+
+        assert result["mission"] == "JUNO"
+        assert "juno_rec_orbit.bsp" in result["configured_files"]
+        assert len(result["directories"]) == 1
+        # The directory should contain all 3 .bsp files
+        all_bsp = result["directories"][0]["all_bsp_files"]
+        assert "juno_rec_orbit.bsp" in all_bsp
+        assert "juno_pred_orbit.bsp" in all_bsp
+        assert "juno_rec_orbit_v2.bsp" in all_bsp
+        # README.txt should NOT be in .bsp list
+        assert "README.txt" not in all_bsp
+        # other_files = .bsp files NOT in configured set
+        assert "juno_pred_orbit.bsp" in result["other_files"]
+        assert "juno_rec_orbit_v2.bsp" in result["other_files"]
+        assert "juno_rec_orbit.bsp" not in result["other_files"]
+
+    @patch("heliospice.kernel_manager.spice")
+    @patch("requests.get")
+    def test_filters_only_bsp_files(self, mock_get, mock_spice, tmp_path):
+        """Only .bsp files are included, not .txt or other extensions."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        html = """<html><body><pre>
+<a href="kernel.bsp">kernel.bsp</a>
+<a href="kernel.BSP">kernel.BSP</a>
+<a href="readme.txt">readme.txt</a>
+<a href="data.csv">data.csv</a>
+<a href="notes.tls">notes.tls</a>
+</pre></body></html>"""
+
+        mock_resp = mock_get.return_value
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.text = html
+
+        result = km.check_remote_kernels("JUNO")
+
+        all_bsp = result["directories"][0]["all_bsp_files"]
+        assert "kernel.bsp" in all_bsp
+        assert "kernel.BSP" in all_bsp
+        assert "readme.txt" not in all_bsp
+        assert "data.csv" not in all_bsp
+        assert "notes.tls" not in all_bsp
+
+    @patch("heliospice.kernel_manager.spice")
+    @patch("requests.get")
+    def test_handles_http_error_gracefully(self, mock_get, mock_spice, tmp_path):
+        """HTTP errors are captured in the result, not raised as exceptions."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        mock_get.return_value.raise_for_status.side_effect = Exception("404 Not Found")
+
+        result = km.check_remote_kernels("JUNO")
+
+        assert result["mission"] == "JUNO"
+        assert len(result["directories"]) == 1
+        assert "error" in result["directories"][0]
+        assert "404" in result["directories"][0]["error"]
+        assert result["directories"][0]["all_bsp_files"] == []
+
+    @patch("heliospice.kernel_manager.spice")
+    def test_raises_keyerror_for_segmented_mission(self, mock_spice, tmp_path):
+        """Raises KeyError when called with a segmented mission."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        with pytest.raises(KeyError, match="segmented kernels"):
+            km.check_remote_kernels("CASSINI")
