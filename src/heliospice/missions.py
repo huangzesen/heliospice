@@ -18,10 +18,10 @@ MISSION_NAIF_IDS: dict[str, int] = {
     "ACE": -92,
     "WIND": -8,
     "DSCOVR": -78,
-    "MMS1": -189,
-    "MMS2": -190,
-    "MMS3": -191,
-    "MMS4": -192,
+    "IBEX": -163,
+    "SOHO": -21,
+    "RBSP_A": -362,
+    "RBSP_B": -363,
     "STEREO_A": -234,
     "STEREO_B": -235,
     "HELIOS_1": -301,
@@ -33,6 +33,12 @@ MISSION_NAIF_IDS: dict[str, int] = {
     "THEMIS_D": -653,
     "THEMIS_E": -654,
     # Planetary / deep-space missions
+    "VEX": -248,
+    "PIONEER_VENUS": -12,
+    "INSIGHT": -189,
+    "LRO": -85,
+    "LUNAR_PROSPECTOR": -25,
+    "MGS": -94,
     "CASSINI": -82,
     "JUNO": -61,
     "VOYAGER_1": -31,
@@ -78,7 +84,6 @@ _ALIASES: dict[str, str] = {
     "SOLAR ORBITER": "SOLO",
     "SOLAR_ORBITER": "SOLO",
     "SOLORB": "SOLO",
-    "MMS": "MMS1",
     "STEREOA": "STEREO_A",
     "STEREO-A": "STEREO_A",
     "STEREOB": "STEREO_B",
@@ -115,6 +120,23 @@ _ALIASES: dict[str, str] = {
     "BEPI COLOMBO": "BEPICOLOMBO",
     "BEPI_COLOMBO": "BEPICOLOMBO",
     "MPO": "BEPICOLOMBO",
+    "VAN ALLEN PROBE A": "RBSP_A",
+    "VAN_ALLEN_PROBE_A": "RBSP_A",
+    "RBSPA": "RBSP_A",
+    "VAN ALLEN PROBE B": "RBSP_B",
+    "VAN_ALLEN_PROBE_B": "RBSP_B",
+    "RBSPB": "RBSP_B",
+    "VENUS EXPRESS": "VEX",
+    "VENUS_EXPRESS": "VEX",
+    "PVO": "PIONEER_VENUS",
+    "PIONEER 12": "PIONEER_VENUS",
+    "PIONEER_12": "PIONEER_VENUS",
+    "PIONEER VENUS ORBITER": "PIONEER_VENUS",
+    "NSYT": "INSIGHT",
+    "LUNAR PROSPECTOR": "LUNAR_PROSPECTOR",
+    "LP": "LUNAR_PROSPECTOR",
+    "MARS GLOBAL SURVEYOR": "MGS",
+    "MARS_GLOBAL_SURVEYOR": "MGS",
 }
 
 # ---------------------------------------------------------------------------
@@ -301,6 +323,55 @@ MISSION_KERNELS: dict[str, dict[str, str]] = {
             "bc_mtm_scp_cruise_20181016_20251205_v01.bsp"
         ),
     },
+    "SOHO": {
+        "soho_orbit.bsp": (
+            "https://soho.nascom.nasa.gov/data/ancillary/orbit/spice/soho_orbit.bsp"
+        ),
+    },
+    "IBEX": {
+        "ibex_orbits_isoc_ephem_v2251.bsp": (
+            "https://cdaweb.gsfc.nasa.gov/pub/data/ibex/orbits/"
+            "ibex_orbits_isoc_ephem_v2251.bsp"
+        ),
+    },
+    "RBSP_A": {
+        "rbspa_2018_182_2019_291_01.deph.bsp": (
+            "https://cdaweb.gsfc.nasa.gov/pub/data/rbsp/rbspa/ephemeris/ephemerides/"
+            "rbspa_2018_182_2019_291_01.deph.bsp"
+        ),
+    },
+    "RBSP_B": {
+        "rbspb_2018_182_2019_200_01.deph.bsp": (
+            "https://cdaweb.gsfc.nasa.gov/pub/data/rbsp/rbspb/ephemeris/ephemerides/"
+            "rbspb_2018_182_2019_200_01.deph.bsp"
+        ),
+    },
+    "VEX": {
+        "ORVM_______________00001.BSP": (
+            f"{_NAIF_BASE}/VEX/kernels/spk/"
+            "ORVM_______________00001.BSP"
+        ),
+    },
+    "PIONEER_VENUS": {
+        "pvo_781209_820908_ssd1999.bsp": (
+            f"{_NAIF_BASE}/PIONEER12/kernels/spk/"
+            "pvo_781209_820908_ssd1999.bsp"
+        ),
+        "pvo_871229_880601_ssd1999.bsp": (
+            f"{_NAIF_BASE}/PIONEER12/kernels/spk/"
+            "pvo_871229_880601_ssd1999.bsp"
+        ),
+    },
+    "INSIGHT": {
+        "insight_cru_ops_v1.bsp": (
+            f"{_NAIF_BASE}/INSIGHT/kernels/spk/"
+            "insight_cru_ops_v1.bsp"
+        ),
+        "insight_ls_ops181206_iau2000_v1.bsp": (
+            f"{_NAIF_BASE}/INSIGHT/kernels/spk/"
+            "insight_ls_ops181206_iau2000_v1.bsp"
+        ),
+    },
 }
 
 # Missions with segmented SPK files — each maps to a manifest JSON
@@ -309,6 +380,9 @@ SEGMENTED_MISSIONS: dict[str, str] = {
     "CASSINI": "cassini.json",
     "MRO": "mro.json",
     "MARS_2020": "mars2020.json",
+    "LRO": "lro.json",
+    "LUNAR_PROSPECTOR": "lunar_prospector.json",
+    "MGS": "mgs.json",
 }
 
 

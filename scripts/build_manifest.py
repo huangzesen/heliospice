@@ -47,6 +47,21 @@ MISSION_CONFIGS = {
         "pattern": re.compile(r"^m2020_.*\.bsp$", re.IGNORECASE),
         "naif_id": -168,
     },
+    "lro": {
+        "base_url": f"{NAIF_BASE}/pds/data/lro-l-spice-6-v1.0/lrosp_1000/data/spk/",
+        "pattern": re.compile(r"^lrorg_\d{7}_\d{7}_v\d+\.bsp$", re.IGNORECASE),
+        "naif_id": -85,
+    },
+    "lunar_prospector": {
+        "base_url": f"{NAIF_BASE}/LPM/kernels/spk/",
+        "pattern": re.compile(r"^lp_ask_\d{6}-\d{6}\.bsp$", re.IGNORECASE),
+        "naif_id": -25,
+    },
+    "mgs": {
+        "base_url": f"{NAIF_BASE}/pds/data/mgs-m-spice-6-v1.0/mgsp_1000/data/spk/",
+        "pattern": re.compile(r"^mgs_(crus|ab[12]|spo[12]|map[1-8c]|ext\d+)(_ipng_mgs95j)?\.bsp$", re.IGNORECASE),
+        "naif_id": -94,
+    },
 }
 
 

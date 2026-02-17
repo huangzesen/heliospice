@@ -11,11 +11,11 @@ Quick start::
     pos = get_position("PSP", observer="SUN", time="2024-01-15")
     print(f"PSP is {pos['r_au']:.3f} AU from the Sun")
 
-Supported missions: PSP, Solar Orbiter, ACE, Wind, DSCOVR, MMS,
-STEREO-A, Cassini, Juno, Voyager 1/2, MAVEN, New Horizons, and more.
+Supported missions: PSP, Solar Orbiter, SOHO, IBEX, Van Allen Probes,
+STEREO-A, Cassini, Juno, Voyager 1/2, MAVEN, LRO, MGS, and more.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .ephemeris import get_position, get_trajectory, get_state
 from .frames import transform_vector, list_available_frames, list_frames_with_descriptions

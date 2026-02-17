@@ -15,7 +15,13 @@ class TestSegmentedMissions:
         assert "CASSINI" in SEGMENTED_MISSIONS
         assert "MRO" in SEGMENTED_MISSIONS
         assert "MARS_2020" in SEGMENTED_MISSIONS
+        assert "LRO" in SEGMENTED_MISSIONS
+        assert "LUNAR_PROSPECTOR" in SEGMENTED_MISSIONS
+        assert "MGS" in SEGMENTED_MISSIONS
         assert SEGMENTED_MISSIONS["CASSINI"] == "cassini.json"
+        assert SEGMENTED_MISSIONS["LRO"] == "lro.json"
+        assert SEGMENTED_MISSIONS["LUNAR_PROSPECTOR"] == "lunar_prospector.json"
+        assert SEGMENTED_MISSIONS["MGS"] == "mgs.json"
 
     def test_has_kernels_standard(self):
         from heliospice.missions import has_kernels
@@ -26,6 +32,9 @@ class TestSegmentedMissions:
         assert has_kernels("CASSINI") is True
         assert has_kernels("MRO") is True
         assert has_kernels("MARS_2020") is True
+        assert has_kernels("LRO") is True
+        assert has_kernels("LUNAR_PROSPECTOR") is True
+        assert has_kernels("MGS") is True
 
     def test_has_kernels_none(self):
         from heliospice.missions import has_kernels
