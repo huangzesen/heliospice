@@ -8,9 +8,12 @@ KernelManager is a thread-safe singleton that handles:
 - Tracking loaded kernels to avoid double-loading
 """
 
+import importlib.resources
+import json
 import logging
 import os
 import threading
+from datetime import date
 from pathlib import Path
 
 import spiceypy as spice
@@ -52,6 +55,7 @@ class KernelManager:
         self._loaded_kernels: set[str] = set()
         self._generic_loaded = False
         self._mission_kernels_loaded: set[str] = set()
+        self._segmented_files_loaded: set[str] = set()
 
         if kernel_dir is not None:
             self._kernel_dir = Path(kernel_dir)
@@ -141,6 +145,7 @@ class KernelManager:
             self._loaded_kernels.clear()
             self._generic_loaded = False
             self._mission_kernels_loaded.clear()
+            self._segmented_files_loaded.clear()
             logger.info("Unloaded all SPICE kernels")
 
     def list_loaded(self) -> list[str]:
@@ -197,6 +202,12 @@ class KernelManager:
 
         kernels = MISSION_KERNELS.get(mission_key)
         if kernels is None:
+            from .missions import SEGMENTED_MISSIONS
+            if mission_key in SEGMENTED_MISSIONS:
+                raise KeyError(
+                    f"Mission '{mission_key}' uses segmented kernels. "
+                    f"Use ensure_segmented_kernels() with a time range instead."
+                )
             raise KeyError(
                 f"No SPICE kernels defined for mission '{mission_key}'. "
                 f"Available: {', '.join(sorted(MISSION_KERNELS.keys()))}"
@@ -210,8 +221,102 @@ class KernelManager:
         logger.info("Mission kernels loaded: %s", mission_key)
 
     # ------------------------------------------------------------------
+    # Segmented kernel support
+    # ------------------------------------------------------------------
+
+    def _load_manifest(self, mission_key: str) -> list[dict]:
+        """Load a segment manifest JSON for a mission.
+
+        Args:
+            mission_key: Canonical mission key (e.g., "CASSINI").
+
+        Returns:
+            List of segment dicts with keys: file, url, start, stop.
+        """
+        from .missions import SEGMENTED_MISSIONS
+        manifest_file = SEGMENTED_MISSIONS[mission_key]
+        ref = importlib.resources.files("heliospice.manifests").joinpath(manifest_file)
+        return json.loads(ref.read_text(encoding="utf-8"))
+
+    def ensure_segmented_kernels(
+        self, mission_key: str, time_start: date, time_end: date
+    ) -> None:
+        """Download and load segmented kernels covering a time range.
+
+        Loads only the segments that overlap [time_start, time_end].
+
+        Args:
+            mission_key: Canonical mission key (e.g., "CASSINI").
+            time_start: Start date of the query window.
+            time_end: End date of the query window.
+
+        Raises:
+            ValueError: If no segments cover the requested time range.
+        """
+        self.ensure_generic_kernels()
+
+        manifest = self._load_manifest(mission_key)
+
+        # Find segments overlapping [time_start, time_end]
+        matching = []
+        for seg in manifest:
+            seg_start = date.fromisoformat(seg["start"])
+            seg_stop = date.fromisoformat(seg["stop"])
+            if seg_start <= time_end and seg_stop >= time_start:
+                matching.append(seg)
+
+        if not matching:
+            # Build coverage summary for error message
+            if manifest:
+                first = manifest[0]["start"]
+                last = manifest[-1]["stop"]
+                raise ValueError(
+                    f"No kernel segments for {mission_key} cover "
+                    f"{time_start} to {time_end}. "
+                    f"Available coverage: {first} to {last}."
+                )
+            else:
+                raise ValueError(
+                    f"Manifest for {mission_key} is empty — no segments available."
+                )
+
+        for seg in matching:
+            filename = seg["file"]
+            if filename in self._segmented_files_loaded:
+                continue
+            path = self.download_kernel(seg["url"], filename)
+            self.load_kernel(path)
+            self._segmented_files_loaded.add(filename)
+
+        logger.info(
+            "Segmented kernels loaded for %s: %d segments (%s to %s)",
+            mission_key, len(matching),
+            matching[0]["start"], matching[-1]["stop"],
+        )
+
+    # ------------------------------------------------------------------
     # Cache management
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_file_to_mission_map() -> dict[str, str]:
+        """Build a mapping from kernel filename to mission key."""
+        from .missions import GENERIC_KERNELS, SEGMENTED_MISSIONS
+        file_map: dict[str, str] = {}
+        for fname in GENERIC_KERNELS:
+            file_map[fname] = "GENERIC"
+        for mission_key, kernels in MISSION_KERNELS.items():
+            for fname in kernels:
+                file_map[fname] = mission_key
+        for mission_key, manifest_file in SEGMENTED_MISSIONS.items():
+            try:
+                ref = importlib.resources.files("heliospice.manifests").joinpath(manifest_file)
+                manifest = json.loads(ref.read_text(encoding="utf-8"))
+                for seg in manifest:
+                    file_map[seg["file"]] = mission_key
+            except Exception:
+                pass
+        return file_map
 
     def get_cache_size_bytes(self) -> int:
         """Return total size of cached kernel files in bytes."""
@@ -223,7 +328,12 @@ class KernelManager:
         return total
 
     def get_cache_info(self) -> dict:
-        """Return cache summary: directory, total size, file count."""
+        """Return cache summary grouped by mission.
+
+        Returns:
+            Dict with kernel_dir, total_size_mb, file_count,
+            and missions dict mapping mission keys to their cached files.
+        """
         files = []
         if self._kernel_dir.exists():
             files = [
@@ -231,12 +341,129 @@ class KernelManager:
                 if f.is_file() and not f.name.endswith(".tmp")
             ]
         total = sum(f.stat().st_size for f in files)
+
+        file_map = self._build_file_to_mission_map()
+        missions: dict[str, dict] = {}
+        for f in sorted(files):
+            mission = file_map.get(f.name, "UNKNOWN")
+            if mission not in missions:
+                missions[mission] = {"size_mb": 0.0, "file_count": 0, "files": []}
+            size_mb = round(f.stat().st_size / (1024 * 1024), 2)
+            missions[mission]["size_mb"] = round(missions[mission]["size_mb"] + size_mb, 2)
+            missions[mission]["file_count"] += 1
+            missions[mission]["files"].append({"name": f.name, "size_mb": size_mb})
+
         return {
             "kernel_dir": str(self._kernel_dir),
             "total_size_mb": round(total / (1024 * 1024), 2),
             "file_count": len(files),
-            "files": [
-                {"name": f.name, "size_mb": round(f.stat().st_size / (1024 * 1024), 2)}
-                for f in sorted(files)
-            ],
+            "missions": missions,
         }
+
+    def delete_cached_files(self, filenames: list[str]) -> dict:
+        """Delete specific cached kernel files from disk.
+
+        Also unloads them from the SPICE pool if loaded.
+
+        Args:
+            filenames: List of kernel filenames to delete.
+
+        Returns:
+            Dict with deleted files, freed_mb, and any errors.
+        """
+        deleted = []
+        errors = []
+        freed = 0
+
+        with self._lock:
+            for fname in filenames:
+                path = self._kernel_dir / fname
+                if not path.exists():
+                    errors.append(f"{fname}: not found in cache")
+                    continue
+                size = path.stat().st_size
+                # Unload from SPICE if loaded
+                key = str(path.resolve())
+                if key in self._loaded_kernels:
+                    try:
+                        spice.unload(key)
+                    except Exception:
+                        pass
+                    self._loaded_kernels.discard(key)
+                self._segmented_files_loaded.discard(fname)
+                try:
+                    path.unlink()
+                    deleted.append(fname)
+                    freed += size
+                except Exception as e:
+                    errors.append(f"{fname}: {e}")
+
+            # Invalidate mission-level caches if any of their files were deleted
+            file_map = self._build_file_to_mission_map()
+            invalidated_missions = {file_map.get(f) for f in deleted} - {None}
+            self._mission_kernels_loaded -= invalidated_missions
+            if "GENERIC" in invalidated_missions:
+                self._generic_loaded = False
+
+        result: dict = {
+            "deleted": deleted,
+            "freed_mb": round(freed / (1024 * 1024), 2),
+        }
+        if errors:
+            result["errors"] = errors
+        logger.info("Deleted %d cached files (%.1f MB freed)", len(deleted), freed / (1024 * 1024))
+        return result
+
+    def delete_mission_cache(self, mission_key: str) -> dict:
+        """Delete all cached kernel files for a specific mission.
+
+        Args:
+            mission_key: Canonical mission key (e.g., "PSP", "CASSINI", "GENERIC").
+
+        Returns:
+            Dict with deleted files and freed_mb.
+        """
+        file_map = self._build_file_to_mission_map()
+        # Find cached files belonging to this mission
+        to_delete = []
+        if self._kernel_dir.exists():
+            for f in self._kernel_dir.iterdir():
+                if f.is_file() and not f.name.endswith(".tmp"):
+                    if file_map.get(f.name) == mission_key:
+                        to_delete.append(f.name)
+        if not to_delete:
+            return {"deleted": [], "freed_mb": 0.0, "message": f"No cached files for {mission_key}"}
+        return self.delete_cached_files(to_delete)
+
+    def purge_cache(self) -> dict:
+        """Delete ALL cached kernel files and unload everything.
+
+        Returns:
+            Dict with deleted count and freed_mb.
+        """
+        self.unload_all()
+        files = []
+        if self._kernel_dir.exists():
+            files = [
+                f for f in self._kernel_dir.iterdir()
+                if f.is_file() and not f.name.endswith(".tmp")
+            ]
+        freed = 0
+        deleted = 0
+        errors = []
+        for f in files:
+            try:
+                freed += f.stat().st_size
+                f.unlink()
+                deleted += 1
+            except Exception as e:
+                errors.append(f"{f.name}: {e}")
+
+        result: dict = {
+            "deleted_count": deleted,
+            "freed_mb": round(freed / (1024 * 1024), 2),
+        }
+        if errors:
+            result["errors"] = errors
+        logger.info("Purged cache: %d files, %.1f MB freed", deleted, freed / (1024 * 1024))
+        return result

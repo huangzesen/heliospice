@@ -39,6 +39,11 @@ def _create_server() -> "FastMCP":
             "Install it with: pip install heliospice[mcp]"
         )
 
+    def _cache_size_mb() -> float:
+        """Return current kernel cache size in MB."""
+        from .kernel_manager import get_kernel_manager
+        return round(get_kernel_manager().get_cache_size_bytes() / (1024 * 1024), 2)
+
     mcp = FastMCP(
         "spice-ephemeris",
         instructions=(
@@ -82,7 +87,7 @@ def _create_server() -> "FastMCP":
             result = get_position(
                 target=spacecraft, observer=observer, time=time, frame=frame
             )
-            return {"status": "success", **result}
+            return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
@@ -132,6 +137,7 @@ def _create_server() -> "FastMCP":
             # Summary stats
             summary = {
                 "status": "success",
+                "cache_size_mb": _cache_size_mb(),
                 "spacecraft": spacecraft,
                 "observer": observer,
                 "frame": frame,
@@ -239,6 +245,7 @@ def _create_server() -> "FastMCP":
 
             summary = {
                 "status": "success",
+                "cache_size_mb": _cache_size_mb(),
                 "spacecraft": spacecraft,
                 "observer": observer,
                 "frame": frame,
@@ -313,6 +320,7 @@ def _create_server() -> "FastMCP":
 
             result = {
                 "status": "success",
+                "cache_size_mb": _cache_size_mb(),
                 "target1": target1,
                 "target2": target2,
                 "time_start": str(df.index[0]),
@@ -376,6 +384,7 @@ def _create_server() -> "FastMCP":
             )
             return {
                 "status": "success",
+                "cache_size_mb": _cache_size_mb(),
                 "input_vector": vector,
                 "output_vector": [round(float(v), 6) for v in result_vec],
                 "from_frame": from_frame,
@@ -393,7 +402,7 @@ def _create_server() -> "FastMCP":
         Returns the full list of missions that can be queried for positions
         and trajectories.
         """
-        from .missions import list_supported_missions, MISSION_KERNELS
+        from .missions import list_supported_missions, MISSION_KERNELS, SEGMENTED_MISSIONS
         from .kernel_manager import get_kernel_manager
 
         missions = list_supported_missions()
@@ -401,8 +410,10 @@ def _create_server() -> "FastMCP":
         loaded = set(km.list_loaded())
 
         for m in missions:
-            kernel_files = MISSION_KERNELS.get(m["mission_key"], {})
+            key = m["mission_key"]
+            kernel_files = MISSION_KERNELS.get(key, {})
             m["kernels_loaded"] = all(f in loaded for f in kernel_files) if kernel_files else False
+            m["segmented"] = key in SEGMENTED_MISSIONS
 
         return {
             "status": "success",
@@ -429,17 +440,20 @@ def _create_server() -> "FastMCP":
     def manage_kernels(
         action: str,
         mission: str = "",
+        filenames: list[str] | None = None,
     ) -> dict:
-        """Manage SPICE kernels: check status, download, load, or clear.
+        """Manage SPICE kernels: check status, download, load, clean cache, or purge.
 
         Args:
             action: One of:
-                - "status" — show loaded kernels and cache info
+                - "status" — show loaded kernels and cache disk usage grouped by mission
                 - "download" — download kernels for a mission (requires mission param)
                 - "load" — download + load kernels for a mission
-                - "unload_all" — unload all kernels from memory
-                - "cache_size" — show disk usage of kernel cache
-            mission: Mission name (required for "download" and "load" actions)
+                - "unload_all" — unload all kernels from memory (keeps files on disk)
+                - "delete" — delete cached files for a mission (requires mission param) or specific files (requires filenames param). Use "GENERIC" as mission to delete generic kernels.
+                - "purge" — delete ALL cached kernel files and unload everything
+            mission: Mission name (required for "download", "load", and "delete" by mission)
+            filenames: List of specific filenames to delete (for "delete" action only)
         """
         from .kernel_manager import get_kernel_manager
 
@@ -489,14 +503,38 @@ def _create_server() -> "FastMCP":
             km.unload_all()
             return {"status": "success", "message": "All kernels unloaded"}
 
-        elif action == "cache_size":
-            cache = km.get_cache_info()
-            return {"status": "success", "cache": cache}
+        elif action == "delete":
+            if filenames:
+                result = km.delete_cached_files(filenames)
+                return {"status": "success", **result}
+            if not mission:
+                return {
+                    "status": "error",
+                    "message": "delete requires either mission or filenames parameter. "
+                    "Use action='status' to see cached files grouped by mission.",
+                }
+            from .missions import resolve_mission
+            try:
+                if mission.upper() == "GENERIC":
+                    mission_key = "GENERIC"
+                else:
+                    _, mission_key = resolve_mission(mission)
+                result = km.delete_mission_cache(mission_key)
+                return {"status": "success", **result}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+
+        elif action == "purge":
+            result = km.purge_cache()
+            return {"status": "success", **result}
 
         else:
             return {
                 "status": "error",
-                "message": f"Unknown action '{action}'. Use: status, download, load, unload_all, cache_size",
+                "message": (
+                    f"Unknown action '{action}'. "
+                    f"Use: status, download, load, unload_all, delete, purge"
+                ),
             }
 
     return mcp

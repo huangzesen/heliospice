@@ -159,9 +159,6 @@ MISSION_KERNELS: dict[str, dict[str, str]] = {
             "behind_2026_029_01.epm.bsp"
         ),
     },
-    # NOTE: Cassini has ~2900 SPK segment files on NAIF with no merged file.
-    # PDS archive has ~538 files. Not yet supported — needs multi-file kernel loading.
-    # See: https://naif.jpl.nasa.gov/pub/naif/CASSINI/kernels/spk/
     "JUNO": {
         "juno_rec_orbit.bsp": (
             f"{_NAIF_BASE}/JUNO/kernels/spk/"
@@ -304,15 +301,24 @@ MISSION_KERNELS: dict[str, dict[str, str]] = {
             "bc_mtm_scp_cruise_20181016_20251205_v01.bsp"
         ),
     },
-    # NOTE: MRO and Mars 2020 have segmented SPK files on NAIF, no single merged file.
-    # See: https://naif.jpl.nasa.gov/pub/naif/MRO/kernels/spk/
-    # See: https://naif.jpl.nasa.gov/pub/naif/MARS2020/kernels/spk/
+}
+
+# Missions with segmented SPK files — each maps to a manifest JSON
+# listing individual segment files with time coverage.
+SEGMENTED_MISSIONS: dict[str, str] = {
+    "CASSINI": "cassini.json",
+    "MRO": "mro.json",
+    "MARS_2020": "mars2020.json",
 }
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+def has_kernels(mission_key: str) -> bool:
+    """Check if a mission has kernel support (single-file or segmented)."""
+    return mission_key in MISSION_KERNELS or mission_key in SEGMENTED_MISSIONS
 
 def resolve_mission(name: str) -> tuple[int, str]:
     """Resolve a mission name to (NAIF ID, canonical mission key).
@@ -361,7 +367,7 @@ def list_supported_missions() -> list[dict]:
         {
             "mission_key": key,
             "naif_id": naif_id,
-            "has_kernels": key in MISSION_KERNELS,
+            "has_kernels": has_kernels(key),
         }
         for key, naif_id in sorted(MISSION_NAIF_IDS.items())
         if naif_id < 0  # spacecraft only

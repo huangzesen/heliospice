@@ -71,8 +71,10 @@ class TestKernelManager:
         info = km.get_cache_info()
         assert info["file_count"] == 1
         assert info["total_size_mb"] >= 1.0
-        assert len(info["files"]) == 1
-        assert info["files"][0]["name"] == "test.bsp"
+        # File grouped under UNKNOWN since test.bsp isn't a known kernel
+        assert "UNKNOWN" in info["missions"]
+        assert info["missions"]["UNKNOWN"]["file_count"] == 1
+        assert info["missions"]["UNKNOWN"]["files"][0]["name"] == "test.bsp"
 
     @patch("heliospice.kernel_manager.spice")
     @patch("heliospice.kernel_manager.KernelManager.download_kernel")
@@ -131,3 +133,67 @@ class TestKernelManager:
         monkeypatch.setenv("HELIOSPICE_KERNEL_DIR", str(custom_dir))
         km = KernelManager()
         assert km.kernel_dir == custom_dir
+
+    @patch("heliospice.kernel_manager.spice")
+    def test_delete_cached_files(self, mock_spice, tmp_path):
+        """delete_cached_files removes files and unloads from SPICE."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        f1 = tmp_path / "a.bsp"
+        f2 = tmp_path / "b.bsp"
+        f1.write_bytes(b"x" * (1024 * 1024))
+        f2.write_bytes(b"y" * (1024 * 1024))
+        km.load_kernel(f1)
+
+        result = km.delete_cached_files(["a.bsp", "b.bsp"])
+        assert "a.bsp" in result["deleted"]
+        assert "b.bsp" in result["deleted"]
+        assert result["freed_mb"] >= 2.0
+        assert not f1.exists()
+        assert not f2.exists()
+        assert str(f1.resolve()) not in km._loaded_kernels
+
+    @patch("heliospice.kernel_manager.spice")
+    def test_delete_cached_files_not_found(self, mock_spice, tmp_path):
+        """delete_cached_files reports errors for missing files."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        result = km.delete_cached_files(["nonexistent.bsp"])
+        assert result["deleted"] == []
+        assert "errors" in result
+        assert any("not found" in e for e in result["errors"])
+
+    @patch("heliospice.kernel_manager.spice")
+    def test_purge_cache(self, mock_spice, tmp_path):
+        """purge_cache removes all files and clears state."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        for name in ["a.bsp", "b.bsp", "c.tls"]:
+            (tmp_path / name).write_bytes(b"x" * (1024 * 1024))
+            km.load_kernel(tmp_path / name)
+
+        result = km.purge_cache()
+        assert result["deleted_count"] == 3
+        assert result["freed_mb"] >= 3.0
+        assert km.list_loaded() == []
+        assert list(tmp_path.iterdir()) == []
+
+    @patch("heliospice.kernel_manager.spice")
+    def test_cache_info_groups_by_mission(self, mock_spice, tmp_path):
+        """get_cache_info groups files by mission."""
+        from heliospice.kernel_manager import KernelManager
+        km = KernelManager(kernel_dir=tmp_path)
+
+        # Create a file matching a generic kernel name
+        (tmp_path / "naif0012.tls").write_bytes(b"x" * 100)
+        # Create an unknown file
+        (tmp_path / "random.bsp").write_bytes(b"y" * 200)
+
+        info = km.get_cache_info()
+        assert "GENERIC" in info["missions"]
+        assert "UNKNOWN" in info["missions"]
+        assert info["missions"]["GENERIC"]["file_count"] == 1
+        assert info["file_count"] == 2

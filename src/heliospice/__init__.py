@@ -15,7 +15,7 @@ Supported missions: PSP, Solar Orbiter, ACE, Wind, DSCOVR, MMS,
 STEREO-A, Cassini, Juno, Voyager 1/2, MAVEN, New Horizons, and more.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 from .ephemeris import get_position, get_trajectory, get_state
 from .frames import transform_vector, list_available_frames, list_frames_with_descriptions

@@ -6,7 +6,7 @@ and call SpiceyPy under the KernelManager lock for thread safety.
 """
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 import numpy as np
 import pandas as pd
@@ -47,15 +47,37 @@ def _resolve_body(name: str) -> tuple[int, str]:
             raise KeyError(f"Cannot resolve body name '{name}'")
 
 
-def _ensure_kernels(target_key: str, observer_key: str) -> None:
+def _to_date(time_input) -> date:
+    """Extract a date from a string, datetime, or date object."""
+    if isinstance(time_input, datetime):
+        return time_input.date()
+    if isinstance(time_input, date):
+        return time_input
+    # Parse first 10 chars as ISO date (YYYY-MM-DD)
+    return date.fromisoformat(str(time_input).strip()[:10])
+
+
+def _ensure_kernels(
+    target_key: str,
+    observer_key: str,
+    time_start: date | None = None,
+    time_end: date | None = None,
+) -> None:
     """Ensure relevant kernels are loaded for both target and observer."""
     km = get_kernel_manager()
     km.ensure_generic_kernels()
 
-    from .missions import MISSION_KERNELS
+    from .missions import MISSION_KERNELS, SEGMENTED_MISSIONS
     for key in (target_key, observer_key):
         if key in MISSION_KERNELS:
             km.ensure_mission_kernels(key)
+        elif key in SEGMENTED_MISSIONS:
+            if time_start is None or time_end is None:
+                raise ValueError(
+                    f"Mission '{key}' uses segmented kernels and requires "
+                    f"a time range. Provide time_start and time_end."
+                )
+            km.ensure_segmented_kernels(key, time_start, time_end)
 
 
 def _to_et(time_input) -> float:
@@ -112,7 +134,8 @@ def get_position(
     """
     target_id, target_key = _resolve_body(target)
     observer_id, observer_key = _resolve_body(observer)
-    _ensure_kernels(target_key, observer_key)
+    t_date = _to_date(time)
+    _ensure_kernels(target_key, observer_key, time_start=t_date, time_end=t_date)
 
     km = get_kernel_manager()
     with km.lock:
@@ -156,7 +179,8 @@ def get_state(
     """
     target_id, target_key = _resolve_body(target)
     observer_id, observer_key = _resolve_body(observer)
-    _ensure_kernels(target_key, observer_key)
+    t_date = _to_date(time)
+    _ensure_kernels(target_key, observer_key, time_start=t_date, time_end=t_date)
 
     km = get_kernel_manager()
     with km.lock:
@@ -212,7 +236,11 @@ def get_trajectory(
     """
     target_id, target_key = _resolve_body(target)
     observer_id, observer_key = _resolve_body(observer)
-    _ensure_kernels(target_key, observer_key)
+    _ensure_kernels(
+        target_key, observer_key,
+        time_start=_to_date(time_start),
+        time_end=_to_date(time_end),
+    )
 
     km = get_kernel_manager()
     step_s = _parse_step(step)

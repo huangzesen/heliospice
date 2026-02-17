@@ -13,7 +13,7 @@ import numpy as np
 import spiceypy as spice
 
 from .kernel_manager import get_kernel_manager
-from .missions import resolve_mission, MISSION_KERNELS
+from .missions import resolve_mission, MISSION_KERNELS, SEGMENTED_MISSIONS
 
 logger = logging.getLogger("heliospice")
 
@@ -165,6 +165,13 @@ def _compute_rtn_matrix(spacecraft: str, time_et: float) -> np.ndarray:
     km.ensure_generic_kernels()
     if sc_key in MISSION_KERNELS:
         km.ensure_mission_kernels(sc_key)
+    elif sc_key in SEGMENTED_MISSIONS:
+        from datetime import date
+        # LSK already loaded — convert ET to UTC date for segment lookup
+        with km.lock:
+            utc_str = spice.et2utc(time_et, "ISOC", 0)
+        t_date = date.fromisoformat(utc_str[:10])
+        km.ensure_segmented_kernels(sc_key, t_date, t_date)
 
     with km.lock:
         # Spacecraft position relative to Sun in J2000
