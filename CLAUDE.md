@@ -13,7 +13,7 @@ src/heliospice/
   kernel_manager.py    # Download, cache, load/unload kernels (singleton)
   ephemeris.py         # get_position, get_trajectory, get_state
   frames.py            # transform_vector, coordinate frame listings
-  server.py            # MCP server (FastMCP, 8 tools)
+  server.py            # MCP server (FastMCP, 6 tools)
   __main__.py          # python -m heliospice entrypoint
   manifests/           # Bundled JSON manifests for segmented missions
     __init__.py
@@ -65,8 +65,8 @@ server.json            # MCP registry manifest
 
 ## Publication Status
 
-- **PyPI**: `heliospice` v0.3.1 — https://pypi.org/project/heliospice/
-- **MCP Registry**: `io.github.huangzesen/heliospice` v0.3.1 — published via `mcp-publisher`
+- **PyPI**: `heliospice` v0.4.0 — https://pypi.org/project/heliospice/
+- **MCP Registry**: `io.github.huangzesen/heliospice` v0.4.0 — published via `mcp-publisher`
 - **GitHub**: https://github.com/huangzesen/heliospice
 
 To publish a new version:

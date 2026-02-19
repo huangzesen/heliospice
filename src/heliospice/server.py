@@ -56,84 +56,76 @@ def _create_server() -> "FastMCP":
             "Mars 2020, LRO, Lunar Prospector, MGS). ACE, Wind, and DSCOVR have NAIF IDs "
             "but no SPK kernels. Kernels are auto-downloaded from NAIF on first use. "
             "Use list_coordinate_frames to see available coordinate frames before "
-            "querying — frame is a required parameter. Use get_spacecraft_position for "
-            "position at a single time, get_spacecraft_trajectory for position timeseries, "
-            "get_spacecraft_velocity for velocity timeseries, compute_distance for "
+            "querying — frame is a required parameter. Use get_spacecraft_ephemeris for "
+            "position/velocity at a single time or as a timeseries, compute_distance for "
             "distances between bodies, and transform_coordinates for frame transforms."
         ),
     )
 
     @mcp.tool()
-    def get_spacecraft_position(
+    def get_spacecraft_ephemeris(
         spacecraft: str,
         time: str,
         frame: str,
         observer: str,
+        time_end: str = "",
+        step: str = "1h",
+        include_velocity: bool = False,
+        allow_large_response: bool = False,
     ) -> dict:
-        """Get the position of a spacecraft at a specific time.
+        """Get spacecraft position and/or velocity — single time or timeseries.
 
-        Returns position in km, distance in km and AU, and light time in seconds.
+        Single-time mode (time_end empty): returns position in km, distance in km
+        and AU, and light time. With include_velocity=True, also returns velocity
+        components and speed.
+
+        Timeseries mode (time_end provided): returns summary stats, preview rows,
+        and full data records. With include_velocity=True, adds velocity columns
+        and speed stats.
 
         Args:
             spacecraft: Spacecraft name (e.g., "PSP", "ACE", "Solar Orbiter", "Earth")
-            time: UTC time in ISO 8601 format (e.g., "2024-01-15T00:00:00")
+            time: UTC time in ISO 8601 format. For timeseries, this is the start time.
             frame: Coordinate frame (e.g., "ECLIPJ2000", "GSE", "RTN"). Use list_coordinate_frames to see all options.
             observer: Observer body (e.g., "SUN", "EARTH"). Use "EARTH" for geocentric.
+            time_end: End time for timeseries (ISO 8601). Leave empty for single-time query.
+            step: Time step for timeseries (e.g., "1m", "1h", "6h", "1d"). Only used when time_end is provided.
+            include_velocity: If True, include velocity components (vx, vy, vz in km/s) and speed.
+            allow_large_response: Set True to return more than 10,000 data points. Default False — large responses are rejected with summary stats and a hint to increase the step size or narrow the time range. Only used for timeseries.
 
         Examples:
-            - get_spacecraft_position("PSP", "2024-01-15", "ECLIPJ2000", "SUN")
-            - get_spacecraft_position("ACE", "2024-06-01T12:00:00", "GSE", "EARTH")
+            - get_spacecraft_ephemeris("PSP", "2024-01-15", "ECLIPJ2000", "SUN")
+            - get_spacecraft_ephemeris("PSP", "2024-01-15", "ECLIPJ2000", "SUN", include_velocity=True)
+            - get_spacecraft_ephemeris("PSP", "2024-01-01", "ECLIPJ2000", "SUN", time_end="2024-01-31", step="1h")
+            - get_spacecraft_ephemeris("PSP", "2024-01-01", "ECLIPJ2000", "SUN", time_end="2024-01-31", step="1h", include_velocity=True)
         """
-        from .ephemeris import get_position
         try:
-            result = get_position(
-                target=spacecraft, observer=observer, time=time, frame=frame
-            )
-            return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+            # --- Single-time mode ---
+            if not time_end:
+                if include_velocity:
+                    from .ephemeris import get_state
+                    result = get_state(
+                        target=spacecraft, observer=observer, time=time, frame=frame
+                    )
+                else:
+                    from .ephemeris import get_position
+                    result = get_position(
+                        target=spacecraft, observer=observer, time=time, frame=frame
+                    )
+                return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
 
-    @mcp.tool()
-    def get_spacecraft_trajectory(
-        spacecraft: str,
-        time_start: str,
-        time_end: str,
-        frame: str,
-        step: str,
-        observer: str,
-        allow_large_response: bool = False,
-    ) -> dict:
-        """Compute a spacecraft trajectory (position timeseries) over a time range.
+            # --- Timeseries mode ---
+            from .ephemeris import get_trajectory
+            import numpy as np
 
-        Returns summary stats (distance min/max/mean), a preview of first/last rows,
-        the full data as records, and column names. Output columns are always:
-        x_km, y_km, z_km, r_km, r_au.
-
-        For velocity data, use get_spacecraft_velocity instead.
-
-        Args:
-            spacecraft: Spacecraft name (e.g., "PSP", "ACE", "Cassini")
-            time_start: Start time in ISO 8601 (e.g., "2024-01-01")
-            time_end: End time in ISO 8601 (e.g., "2024-01-31")
-            frame: Coordinate frame (e.g., "ECLIPJ2000", "GSE", "RTN"). Use list_coordinate_frames to see all options.
-            step: Time step (e.g., "1m", "1h", "6h", "1d")
-            observer: Observer body (e.g., "SUN", "EARTH")
-            allow_large_response: Set True to return more than 10,000 data points. Default False — large responses are rejected with summary stats and a hint to increase the step size or narrow the time range.
-
-        Examples:
-            - get_spacecraft_trajectory("PSP", "2024-01-01", "2024-01-31", "ECLIPJ2000", "1h", "SUN")
-            - get_spacecraft_trajectory("Earth", "2024-01-01", "2024-12-31", "ECLIPJ2000", "1d", "SUN")
-        """
-        from .ephemeris import get_trajectory
-        try:
             df = get_trajectory(
                 target=spacecraft,
                 observer=observer,
-                time_start=time_start,
+                time_start=time,
                 time_end=time_end,
                 step=step,
                 frame=frame,
-                include_velocity=False,
+                include_velocity=include_velocity,
             )
 
             # Summary stats
@@ -158,18 +150,27 @@ def _create_server() -> "FastMCP":
                 },
             }
 
-            # Include first/last few data points as preview
+            # Add speed stats when velocity is included
+            if include_velocity:
+                speed = np.sqrt(
+                    df["vx_km_s"]**2 + df["vy_km_s"]**2 + df["vz_km_s"]**2
+                )
+                df["speed_km_s"] = speed
+                summary["columns"] = list(df.columns)
+                summary["speed_km_s"] = {
+                    "min": round(float(speed.min()), 3),
+                    "max": round(float(speed.max()), 3),
+                    "mean": round(float(speed.mean()), 3),
+                }
+
+            # Preview: first/last few data points
             n_preview = min(5, len(df))
             preview_rows = []
             for idx in list(range(n_preview)) + list(range(max(n_preview, len(df) - n_preview), len(df))):
                 row = df.iloc[idx]
-                entry = {
-                    "time": str(df.index[idx]),
-                    "x_km": round(float(row["x_km"]), 1),
-                    "y_km": round(float(row["y_km"]), 1),
-                    "z_km": round(float(row["z_km"]), 1),
-                    "r_au": round(float(row["r_au"]), 6),
-                }
+                entry = {"time": str(df.index[idx])}
+                for col in df.columns:
+                    entry[col] = round(float(row[col]), 6 if "au" in col else 3 if "km_s" in col else 1)
                 preview_rows.append(entry)
             summary["preview"] = preview_rows
 
@@ -188,95 +189,6 @@ def _create_server() -> "FastMCP":
             for ts, row in df.iterrows():
                 record = {"time": str(ts)}
                 for col in df.columns:
-                    record[col] = float(row[col])
-                records.append(record)
-            summary["data"] = records
-
-            return summary
-
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-    @mcp.tool()
-    def get_spacecraft_velocity(
-        spacecraft: str,
-        time_start: str,
-        time_end: str,
-        frame: str,
-        step: str,
-        observer: str,
-        allow_large_response: bool = False,
-    ) -> dict:
-        """Compute a spacecraft velocity timeseries over a time range.
-
-        Returns velocity components (vx, vy, vz in km/s) and speed. Output columns
-        are always: vx_km_s, vy_km_s, vz_km_s, speed_km_s.
-
-        For position data, use get_spacecraft_trajectory instead.
-
-        Args:
-            spacecraft: Spacecraft name (e.g., "PSP", "ACE", "Cassini")
-            time_start: Start time in ISO 8601 (e.g., "2024-01-01")
-            time_end: End time in ISO 8601 (e.g., "2024-01-31")
-            frame: Coordinate frame (e.g., "ECLIPJ2000", "GSE", "RTN"). Use list_coordinate_frames to see all options.
-            step: Time step (e.g., "1m", "1h", "6h", "1d")
-            observer: Observer body (e.g., "SUN", "EARTH")
-            allow_large_response: Set True to return more than 10,000 data points. Default False — large responses are rejected with summary stats and a hint to increase the step size or narrow the time range.
-
-        Examples:
-            - get_spacecraft_velocity("PSP", "2024-01-01", "2024-01-31", "ECLIPJ2000", "1h", "SUN")
-        """
-        from .ephemeris import get_trajectory
-        import numpy as np
-        try:
-            df = get_trajectory(
-                target=spacecraft,
-                observer=observer,
-                time_start=time_start,
-                time_end=time_end,
-                step=step,
-                frame=frame,
-                include_velocity=True,
-            )
-
-            # Keep only velocity columns, add speed
-            vel_df = df[["vx_km_s", "vy_km_s", "vz_km_s"]].copy()
-            vel_df["speed_km_s"] = np.sqrt(
-                vel_df["vx_km_s"]**2 + vel_df["vy_km_s"]**2 + vel_df["vz_km_s"]**2
-            )
-
-            summary = {
-                "status": "success",
-                "cache_size_mb": _cache_size_mb(),
-                "spacecraft": spacecraft,
-                "observer": observer,
-                "frame": frame,
-                "time_start": str(vel_df.index[0]),
-                "time_end": str(vel_df.index[-1]),
-                "n_points": len(vel_df),
-                "columns": list(vel_df.columns),
-                "speed_km_s": {
-                    "min": round(float(vel_df["speed_km_s"].min()), 3),
-                    "max": round(float(vel_df["speed_km_s"].max()), 3),
-                    "mean": round(float(vel_df["speed_km_s"].mean()), 3),
-                },
-            }
-
-            # Guard: reject large responses unless caller opted in
-            if len(vel_df) > _MAX_RESPONSE_POINTS and not allow_large_response:
-                summary["status"] = "error"
-                summary["message"] = (
-                    f"Response contains {len(vel_df):,} data points, exceeding the "
-                    f"{_MAX_RESPONSE_POINTS:,} point limit. Either increase the step "
-                    f"size, narrow the time range, or set allow_large_response=True."
-                )
-                return summary
-
-            # Full data for downstream storage/plotting
-            records = []
-            for ts, row in vel_df.iterrows():
-                record = {"time": str(ts)}
-                for col in vel_df.columns:
                     record[col] = float(row[col])
                 records.append(record)
             summary["data"] = records

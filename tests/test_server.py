@@ -25,8 +25,8 @@ class TestMCPTools:
 
     @patch("heliospice.ephemeris.get_kernel_manager")
     @patch("heliospice.ephemeris.spice")
-    def test_get_spacecraft_position_tool(self, mock_spice, mock_get_km):
-        """MCP tool returns success with position data."""
+    def test_single_time_position(self, mock_spice, mock_get_km):
+        """Single-time ephemeris returns success with position data."""
         mock_km = MagicMock()
         mock_km.lock = MagicMock()
         mock_km.lock.__enter__ = MagicMock(return_value=None)
@@ -36,15 +36,30 @@ class TestMCPTools:
         mock_spice.utc2et.return_value = 0.0
         mock_spice.spkpos.return_value = ([1.496e8, 0.0, 0.0], 499.0)
 
-        # Import the server and call the tool function directly
-        from heliospice.server import _create_server
-        server = _create_server()
-
-        # We need to test the actual function, not the MCP wrapper
-        # The easiest way is to call the ephemeris function directly
         from heliospice.ephemeris import get_position
         result = get_position("EARTH", "SUN", "2000-01-01T12:00:00")
         assert "r_au" in result
+
+    @patch("heliospice.ephemeris.get_kernel_manager")
+    @patch("heliospice.ephemeris.spice")
+    def test_single_time_with_velocity(self, mock_spice, mock_get_km):
+        """Single-time ephemeris with include_velocity returns state data."""
+        mock_km = MagicMock()
+        mock_km.lock = MagicMock()
+        mock_km.lock.__enter__ = MagicMock(return_value=None)
+        mock_km.lock.__exit__ = MagicMock(return_value=False)
+        mock_get_km.return_value = mock_km
+
+        mock_spice.utc2et.return_value = 0.0
+        mock_spice.spkezr.return_value = (
+            [1.496e8, 0.0, 0.0, 0.0, 29.78, 0.0], 499.0
+        )
+
+        from heliospice.ephemeris import get_state
+        result = get_state("EARTH", "SUN", "2000-01-01T12:00:00")
+        assert "vx_km_s" in result
+        assert "speed_km_s" in result
+        assert result["speed_km_s"] == pytest.approx(29.78, rel=1e-6)
 
     def test_list_spice_missions_tool(self):
         """list_spice_missions returns mission data."""
@@ -62,8 +77,8 @@ class TestMCPTools:
 
     @patch("heliospice.ephemeris.get_kernel_manager")
     @patch("heliospice.ephemeris.spice")
-    def test_trajectory_rejects_large_response(self, mock_spice, mock_get_km):
-        """Trajectory with >10k points is rejected when allow_large_response=False."""
+    def test_timeseries_rejects_large_response(self, mock_spice, mock_get_km):
+        """Timeseries with >10k points is rejected when allow_large_response=False."""
         from heliospice.server import _MAX_RESPONSE_POINTS
 
         mock_km = MagicMock()
@@ -91,8 +106,8 @@ class TestMCPTools:
 
     @patch("heliospice.ephemeris.get_kernel_manager")
     @patch("heliospice.ephemeris.spice")
-    def test_velocity_with_trajectory(self, mock_spice, mock_get_km):
-        """Velocity data includes speed computation."""
+    def test_timeseries_with_velocity(self, mock_spice, mock_get_km):
+        """Timeseries with include_velocity includes speed computation."""
         import numpy as np
         from heliospice.ephemeris import get_trajectory
 
@@ -113,8 +128,19 @@ class TestMCPTools:
             step="1d", include_velocity=True
         )
 
-        vel_df = df[["vx_km_s", "vy_km_s", "vz_km_s"]].copy()
-        vel_df["speed_km_s"] = np.sqrt(
-            vel_df["vx_km_s"]**2 + vel_df["vy_km_s"]**2 + vel_df["vz_km_s"]**2
+        assert "vx_km_s" in df.columns
+        speed = np.sqrt(
+            df["vx_km_s"]**2 + df["vy_km_s"]**2 + df["vz_km_s"]**2
         )
-        assert vel_df["speed_km_s"].iloc[0] == pytest.approx(29.78, rel=1e-6)
+        assert speed.iloc[0] == pytest.approx(29.78, rel=1e-6)
+
+    def test_server_has_six_tools(self):
+        """Server registers exactly 6 tools after merge."""
+        from heliospice.server import _create_server
+        server = _create_server()
+        tools = list(server._tool_manager._tools.keys())
+        assert len(tools) == 6
+        assert "get_spacecraft_ephemeris" in tools
+        assert "get_spacecraft_position" not in tools
+        assert "get_spacecraft_trajectory" not in tools
+        assert "get_spacecraft_velocity" not in tools
