@@ -28,7 +28,7 @@ except ImportError:
 # Max data points returned in a single trajectory/velocity response.
 # Requests exceeding this are rejected with summary stats unless the caller
 # explicitly opts in with allow_large_response=True.
-_MAX_RESPONSE_POINTS = 10_000
+_MAX_RESPONSE_POINTS = 50_000
 
 
 def _create_server() -> "FastMCP":
@@ -42,23 +42,47 @@ def _create_server() -> "FastMCP":
     def _cache_size_mb() -> float:
         """Return current kernel cache size in MB."""
         from .kernel_manager import get_kernel_manager
+
         return round(get_kernel_manager().get_cache_size_bytes() / (1024 * 1024), 2)
 
     mcp = FastMCP(
         "spice-ephemeris",
         instructions=(
-            "SPICE ephemeris server for spacecraft position and trajectory queries. "
-            "Supports 36 spacecraft: heliophysics missions (PSP, Solar Orbiter, SOHO, "
-            "IBEX, STEREO-A/B, Helios 1/2, Ulysses, Van Allen Probes A/B, THEMIS A–E) "
-            "and planetary/deep-space missions (Cassini, Juno, Voyager 1/2, MAVEN, "
-            "New Horizons, Galileo, Pioneer 10/11, MESSENGER, Dawn, Lucy, Europa Clipper, "
-            "Psyche, JUICE, BepiColombo, Venus Express, Pioneer Venus, InSight, MRO, "
-            "Mars 2020, LRO, Lunar Prospector, MGS). ACE, Wind, and DSCOVR have NAIF IDs "
-            "but no SPK kernels. Kernels are auto-downloaded from NAIF on first use. "
-            "Use list_coordinate_frames to see available coordinate frames before "
-            "querying — frame is a required parameter. Use get_spacecraft_ephemeris for "
-            "position/velocity at a single time or as a timeseries, compute_distance for "
-            "distances between bodies, and transform_coordinates for frame transforms."
+            "SPICE Ephemeris Server — Query spacecraft positions, trajectories, and coordinate transforms.\n\n"
+            "=== What is SPICE? ===\n"
+            "SPICE is NASA's Navigation and Ancillary Information Facility (NAIF) system for accessing "
+            "spacecraft ephemerides, planetary positions, and coordinate frames. It uses binary 'kernels' "
+            "(SPK for position/velocity, PCK for planetary constants, LSK for leap seconds) to compute "
+            "positions of bodies at any time. This server wraps the Python 'SpiceyPy' library with "
+            "automatic kernel management — kernels are downloaded on-demand from NAIF and cached locally.\n\n"
+            "=== Available Spacecraft (36 total) ===\n"
+            "Heliophysics: PSP (Parker Solar Probe), SOLO (Solar Orbiter), SOHO, IBEX, STEREO-A/B, "
+            "Helios 1/2, Ulysses, ACE*, Wind*, DSCOVR*, Van Allen Probes (RBSP_A/B), THEMIS A-E (ARTEMIS)\n"
+            "Planetary/Deep-Space: Cassini, Juno, Voyager 1/2, MAVEN, New Horizons, Galileo, Pioneer 10/11, "
+            "MESSENGER, Dawn, Lucy, Europa Clipper, Psyche, JUICE, BepiColombo, Venus Express, Pioneer Venus, "
+            "InSight, MRO, Mars 2020, LRO, Lunar Prospector, MGS\n"
+            "* ACE, Wind, DSCOVR have NAIF IDs but no public SPK kernels available.\n\n"
+            "=== Available Bodies (observers/targets) ===\n"
+            "Sun, Earth, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, "
+            "Solar System Barycenter (SSB), and planetary barycenters.\n\n"
+            "=== Available Coordinate Frames ===\n"
+            "Inertial: J2000, ECLIPJ2000, B1950, ICRF\n"
+            "Heliocentric: HCI (Heliocentric Inertial), HCRS (Heliocentric Celestial Reference), HEEQ (Heliocentric Ecliptic/Earth Equatorial)\n"
+            "Earth-centered: GSE, GEI, GSE, SM\n"
+            "Spacecraft: RTN (Radial-Tangential-Normal), requires spacecraft name\n\n"
+            "=== Tools ===\n"
+            "1. get_spacecraft_ephemeris — Position/velocity at single time or timeseries. Returns position (x,y,z km), distance (km/AU), light time. Set include_velocity=True for velocity components. Use time_end for series mode (requires frame, observer). Default limit: 50,000 points; set allow_large_response=True to override.\n"
+            "2. compute_distance — Distance between two bodies over time range, returns min/max/mean and closest approach.\n"
+            "3. transform_coordinates — Transform 3D vectors between frames (e.g., RTN to J2000). RTN requires spacecraft name.\n"
+            "4. list_spice_missions — List all supported missions with kernel status.\n"
+            "5. list_coordinate_frames — Show all frames with descriptions and usage guidance.\n"
+            "6. manage_kernels — Check status, download/load kernels, delete cache, or purge all.\n\n"
+            "=== Usage Notes ===\n"
+            "- frame is required for get_spacecraft_ephemeris — use list_coordinate_frames first to choose.\n"
+            "- Observer defaults to SUN; use EARTH for geocentric, or any planet.\n"
+            "- Time format: ISO 8601 (e.g., '2024-01-15T12:00:00' or '2024-01-15').\n"
+            "- Step for timeseries: '1m', '1h', '6h', '1d' (default '1h').\n"
+            "- Kernels auto-download on first query; cache location: ~/.heliospice/kernels/ (configurable via HELIOSPICE_KERNEL_DIR)."
         ),
     )
 
@@ -91,7 +115,7 @@ def _create_server() -> "FastMCP":
             time_end: End time for timeseries (ISO 8601). Leave empty for single-time query.
             step: Time step for timeseries (e.g., "1m", "1h", "6h", "1d"). Only used when time_end is provided.
             include_velocity: If True, include velocity components (vx, vy, vz in km/s) and speed.
-            allow_large_response: Set True to return more than 10,000 data points. Default False — large responses are rejected with summary stats and a hint to increase the step size or narrow the time range. Only used for timeseries.
+            allow_large_response: If True, overrides the default 50,000 point limit to allow large responses. Default False — large responses are rejected with summary stats and a hint to increase the step size or narrow the time range. Only used for timeseries.
 
         Examples:
             - get_spacecraft_ephemeris("PSP", "2024-01-15", "ECLIPJ2000", "SUN")
@@ -104,15 +128,21 @@ def _create_server() -> "FastMCP":
             if not time_end:
                 if include_velocity:
                     from .ephemeris import get_state
+
                     result = get_state(
                         target=spacecraft, observer=observer, time=time, frame=frame
                     )
                 else:
                     from .ephemeris import get_position
+
                     result = get_position(
                         target=spacecraft, observer=observer, time=time, frame=frame
                     )
-                return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
+                return {
+                    "status": "success",
+                    "cache_size_mb": _cache_size_mb(),
+                    **result,
+                }
 
             # --- Timeseries mode ---
             from .ephemeris import get_trajectory
@@ -153,7 +183,7 @@ def _create_server() -> "FastMCP":
             # Add speed stats when velocity is included
             if include_velocity:
                 speed = np.sqrt(
-                    df["vx_km_s"]**2 + df["vy_km_s"]**2 + df["vz_km_s"]**2
+                    df["vx_km_s"] ** 2 + df["vy_km_s"] ** 2 + df["vz_km_s"] ** 2
                 )
                 df["speed_km_s"] = speed
                 summary["columns"] = list(df.columns)
@@ -166,11 +196,15 @@ def _create_server() -> "FastMCP":
             # Preview: first/last few data points
             n_preview = min(5, len(df))
             preview_rows = []
-            for idx in list(range(n_preview)) + list(range(max(n_preview, len(df) - n_preview), len(df))):
+            for idx in list(range(n_preview)) + list(
+                range(max(n_preview, len(df) - n_preview), len(df))
+            ):
                 row = df.iloc[idx]
                 entry = {"time": str(df.index[idx])}
                 for col in df.columns:
-                    entry[col] = round(float(row[col]), 6 if "au" in col else 3 if "km_s" in col else 1)
+                    entry[col] = round(
+                        float(row[col]), 6 if "au" in col else 3 if "km_s" in col else 1
+                    )
                 preview_rows.append(entry)
             summary["preview"] = preview_rows
 
@@ -222,6 +256,7 @@ def _create_server() -> "FastMCP":
             - compute_distance("ACE", "Earth", "2024-06-01", "2024-06-30", "6h")
         """
         from .ephemeris import get_trajectory
+
         try:
             df = get_trajectory(
                 target=target1,
@@ -287,8 +322,10 @@ def _create_server() -> "FastMCP":
             - transform_coordinates([5.0, -3.0, 1.0], "2024-01-15", "RTN", "J2000", spacecraft="PSP")
         """
         from .frames import transform_vector
+
         try:
             import numpy as np
+
             result_vec = transform_vector(
                 vector=vector,
                 time=time,
@@ -316,7 +353,11 @@ def _create_server() -> "FastMCP":
         Returns the full list of missions that can be queried for positions
         and trajectories.
         """
-        from .missions import list_supported_missions, MISSION_KERNELS, SEGMENTED_MISSIONS
+        from .missions import (
+            list_supported_missions,
+            MISSION_KERNELS,
+            SEGMENTED_MISSIONS,
+        )
         from .kernel_manager import get_kernel_manager
 
         missions = list_supported_missions()
@@ -326,7 +367,9 @@ def _create_server() -> "FastMCP":
         for m in missions:
             key = m["mission_key"]
             kernel_files = MISSION_KERNELS.get(key, {})
-            m["kernels_loaded"] = all(f in loaded for f in kernel_files) if kernel_files else False
+            m["kernels_loaded"] = (
+                all(f in loaded for f in kernel_files) if kernel_files else False
+            )
             m["segmented"] = key in SEGMENTED_MISSIONS
 
         return {
@@ -343,6 +386,7 @@ def _create_server() -> "FastMCP":
         Call this to understand which frame to choose for a given analysis task.
         """
         from .frames import list_frames_with_descriptions
+
         frames = list_frames_with_descriptions()
         return {
             "status": "success",
@@ -386,8 +430,12 @@ def _create_server() -> "FastMCP":
 
         elif action == "download":
             if not mission:
-                return {"status": "error", "message": "mission parameter required for download"}
+                return {
+                    "status": "error",
+                    "message": "mission parameter required for download",
+                }
             from .missions import resolve_mission
+
             try:
                 _, mission_key = resolve_mission(mission)
                 km.ensure_mission_kernels(mission_key)
@@ -401,8 +449,12 @@ def _create_server() -> "FastMCP":
 
         elif action == "load":
             if not mission:
-                return {"status": "error", "message": "mission parameter required for load"}
+                return {
+                    "status": "error",
+                    "message": "mission parameter required for load",
+                }
             from .missions import resolve_mission
+
             try:
                 _, mission_key = resolve_mission(mission)
                 km.ensure_mission_kernels(mission_key)
@@ -429,6 +481,7 @@ def _create_server() -> "FastMCP":
                     "Use action='status' to see cached files grouped by mission.",
                 }
             from .missions import resolve_mission
+
             try:
                 if mission.upper() == "GENERIC":
                     mission_key = "GENERIC"
@@ -441,12 +494,20 @@ def _create_server() -> "FastMCP":
 
         elif action == "check_remote":
             if not mission:
-                return {"status": "error", "message": "mission parameter required for check_remote"}
+                return {
+                    "status": "error",
+                    "message": "mission parameter required for check_remote",
+                }
             from .missions import resolve_mission
+
             try:
                 _, mission_key = resolve_mission(mission)
                 result = km.check_remote_kernels(mission_key)
-                return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
+                return {
+                    "status": "success",
+                    "cache_size_mb": _cache_size_mb(),
+                    **result,
+                }
             except Exception as e:
                 return {"status": "error", "message": str(e)}
 
@@ -468,8 +529,12 @@ def _create_server() -> "FastMCP":
 
 def main():
     """CLI entrypoint for the SPICE MCP server."""
-    parser = argparse.ArgumentParser(description="heliospice MCP server for spacecraft ephemeris")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser = argparse.ArgumentParser(
+        description="heliospice MCP server for spacecraft ephemeris"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
     args, _ = parser.parse_known_args()
 
     if args.verbose:
