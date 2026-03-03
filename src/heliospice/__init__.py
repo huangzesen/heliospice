@@ -33,10 +33,14 @@ Supported missions (36 spacecraft):
 Use ``list_supported_missions()`` for programmatic access.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from .ephemeris import get_position, get_trajectory, get_state
-from .frames import transform_vector, list_available_frames, list_frames_with_descriptions
+from .frames import (
+    transform_vector,
+    list_available_frames,
+    list_frames_with_descriptions,
+)
 from .missions import resolve_mission, list_supported_missions
 from .kernel_manager import KernelManager, get_kernel_manager, check_remote_kernels
 
