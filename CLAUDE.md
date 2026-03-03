@@ -97,6 +97,17 @@ heliospice-mcp          # or: python -m heliospice.server
 # Build + publish
 python -m build
 twine upload dist/heliospice-{version}*
+
+# Full publish workflow (git → PyPI → MCP registry → ClawHub)
+# 1. Update version in pyproject.toml, src/heliospice/__init__.py, and server.json
+# 2. Git push
+git add -A && git commit -m "Bump version to {version}" && git push
+# 3. Build + PyPI
+python -m build && twine upload dist/heliospice-{version}*
+# 4. MCP registry auto-discovers from PyPI (or use mcp-publisher)
+mcp-publisher publish  # if manual update needed
+# 5. Publish to ClawHub (OpenClaw skills)
+clawhub publish ./heliospice-skill --slug heliospice --name "Heliospice" --version {version} --tags "space,ephemeris,nasa,planets,spacecraft" --changelog "Version {version}"
 ```
 
 ## Relationship to helio-ai-agent
