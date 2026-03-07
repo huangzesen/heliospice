@@ -33,7 +33,7 @@ Supported missions (36 spacecraft):
 Use ``list_supported_missions()`` for programmatic access.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 from .ephemeris import get_position, get_trajectory, get_state
 from .frames import (
