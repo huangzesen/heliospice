@@ -250,11 +250,13 @@ def get_trajectory(
         et_end = _to_et(time_end)
 
     n_steps = max(1, int((et_end - et_start) / step_s) + 1)
-    # Cap at 100k points to prevent memory issues
-    if n_steps > 100_000:
-        step_s = (et_end - et_start) / 100_000
-        n_steps = 100_001
-        logger.warning("Trajectory capped at 100k points; step adjusted to %.1fs", step_s)
+    if n_steps > 1_000_000:
+        logger.warning(
+            "Trajectory request has %s points — this may use significant memory "
+            "(~%.0f MB). Consider a larger step size.",
+            f"{n_steps:,}",
+            n_steps * 24 / 1e6 * 8,  # 3 pos floats × 8 bytes, rough estimate
+        )
 
     et_times = np.linspace(et_start, et_end, n_steps)
 
