@@ -15,7 +15,7 @@ pip install heliospice
 
 ## What You Can Query
 
-**Spacecraft (36+)**: Parker Solar Probe, Solar Orbiter, Juno, Cassini, Voyager 1/2, Mars 2020, MRO, New Horizons, Europa Clipper, Psyche, BepiColombo, JUICE, Lucy, Galileo, Dawn, MESSENGER, and more...
+**Spacecraft (43)**: Parker Solar Probe, Solar Orbiter, Juno, Cassini, Voyager 1/2, Mars 2020, MRO, New Horizons, Europa Clipper, Psyche, BepiColombo, JUICE, Lucy, Galileo, Dawn, MESSENGER, SOHO, IBEX, STEREO-A/B, Helios 1/2, Ulysses, Van Allen Probes, THEMIS, MAVEN, LRO, and more...
 
 **Planets**: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto
 
