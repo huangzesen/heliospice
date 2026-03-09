@@ -20,6 +20,40 @@ logger = logging.getLogger("heliospice")
 # Astronomical unit in km (IAU 2012)
 AU_KM = 149597870.7
 
+# Whether a frame requires manual rotation instead of passing to SPICE
+_RTN_FRAME = "RTN"
+
+# Sun's north pole in J2000 (IAU_SUN: RA=286.13°, Dec=63.87°)
+_SUN_NORTH_J2000 = np.array([
+    np.cos(np.radians(63.87)) * np.cos(np.radians(286.13)),
+    np.cos(np.radians(63.87)) * np.sin(np.radians(286.13)),
+    np.sin(np.radians(63.87)),
+])
+
+
+def _rtn_matrix(pos_j2000: np.ndarray) -> np.ndarray:
+    """Build the J2000→RTN rotation matrix from a Sun-centered position.
+
+    Args:
+        pos_j2000: 3-element position vector from Sun in J2000 (km).
+
+    Returns:
+        3x3 rotation matrix whose rows are R, T, N unit vectors in J2000.
+    """
+    r_hat = pos_j2000 / np.linalg.norm(pos_j2000)
+
+    t_hat = np.cross(_SUN_NORTH_J2000, r_hat)
+    t_norm = np.linalg.norm(t_hat)
+    if t_norm < 1e-10:
+        t_hat = np.array([0.0, 1.0, 0.0])
+    else:
+        t_hat = t_hat / t_norm
+
+    n_hat = np.cross(r_hat, t_hat)
+    n_hat = n_hat / np.linalg.norm(n_hat)
+
+    return np.array([r_hat, t_hat, n_hat])
+
 
 def _resolve_body(name: str) -> tuple[int, str]:
     """Resolve a body name to (NAIF ID, canonical key).
@@ -137,10 +171,21 @@ def get_position(
     t_date = _to_date(time)
     _ensure_kernels(target_key, observer_key, time_start=t_date, time_end=t_date)
 
+    is_rtn = frame.strip().upper() == _RTN_FRAME
+    spice_frame = "J2000" if is_rtn else frame
+
     km = get_kernel_manager()
     with km.lock:
         et = _to_et(time)
-        pos, lt = spice.spkpos(str(target_id), et, frame, "NONE", str(observer_id))
+        pos, lt = spice.spkpos(str(target_id), et, spice_frame, "NONE", str(observer_id))
+
+    pos = np.asarray(pos, dtype=float)
+    if is_rtn:
+        # Get target position from Sun for RTN matrix
+        with km.lock:
+            sun_pos, _ = spice.spkpos(str(target_id), et, "J2000", "NONE", "10")
+        rtn_mat = _rtn_matrix(np.asarray(sun_pos, dtype=float))
+        pos = rtn_mat @ pos
 
     x, y, z = float(pos[0]), float(pos[1]), float(pos[2])
     r_km = float(np.sqrt(x**2 + y**2 + z**2))
@@ -182,13 +227,26 @@ def get_state(
     t_date = _to_date(time)
     _ensure_kernels(target_key, observer_key, time_start=t_date, time_end=t_date)
 
+    is_rtn = frame.strip().upper() == _RTN_FRAME
+    spice_frame = "J2000" if is_rtn else frame
+
     km = get_kernel_manager()
     with km.lock:
         et = _to_et(time)
-        state, lt = spice.spkezr(str(target_id), et, frame, "NONE", str(observer_id))
+        state, lt = spice.spkezr(str(target_id), et, spice_frame, "NONE", str(observer_id))
 
-    x, y, z = float(state[0]), float(state[1]), float(state[2])
-    vx, vy, vz = float(state[3]), float(state[4]), float(state[5])
+    pos = np.asarray(state[:3], dtype=float)
+    vel = np.asarray(state[3:], dtype=float)
+
+    if is_rtn:
+        with km.lock:
+            sun_pos, _ = spice.spkpos(str(target_id), et, "J2000", "NONE", "10")
+        rtn_mat = _rtn_matrix(np.asarray(sun_pos, dtype=float))
+        pos = rtn_mat @ pos
+        vel = rtn_mat @ vel
+
+    x, y, z = float(pos[0]), float(pos[1]), float(pos[2])
+    vx, vy, vz = float(vel[0]), float(vel[1]), float(vel[2])
     r_km = float(np.sqrt(x**2 + y**2 + z**2))
     speed = float(np.sqrt(vx**2 + vy**2 + vz**2))
 
@@ -242,6 +300,9 @@ def get_trajectory(
         time_end=_to_date(time_end),
     )
 
+    is_rtn = frame.strip().upper() == _RTN_FRAME
+    spice_frame = "J2000" if is_rtn else frame
+
     km = get_kernel_manager()
     step_s = _parse_step(step)
 
@@ -268,12 +329,20 @@ def get_trajectory(
     with km.lock:
         for i, et in enumerate(et_times):
             if include_velocity:
-                state, _ = spice.spkezr(str(target_id), et, frame, "NONE", str(observer_id))
+                state, _ = spice.spkezr(str(target_id), et, spice_frame, "NONE", str(observer_id))
                 positions[i] = state[:3]
                 velocities[i] = state[3:]
             else:
-                pos, _ = spice.spkpos(str(target_id), et, frame, "NONE", str(observer_id))
+                pos, _ = spice.spkpos(str(target_id), et, spice_frame, "NONE", str(observer_id))
                 positions[i] = pos
+
+            if is_rtn:
+                sun_pos, _ = spice.spkpos(str(target_id), et, "J2000", "NONE", "10")
+                rtn_mat = _rtn_matrix(np.asarray(sun_pos, dtype=float))
+                positions[i] = rtn_mat @ positions[i]
+                if include_velocity:
+                    velocities[i] = rtn_mat @ velocities[i]
+
             utc_times.append(spice.et2utc(et, "ISOC", 3))
 
     # Build DataFrame

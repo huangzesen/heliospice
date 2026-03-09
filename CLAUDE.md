@@ -20,9 +20,12 @@ src/heliospice/
     cassini.json       # 505 SPK segments (2001–2017)
     mro.json           # 185 SPK segments (2006–2026)
     mars2020.json      # 52 SPK segments (2019–2036)
+    lro.json           # LRO SPK segments
+    lunar_prospector.json  # Lunar Prospector SPK segments
+    mgs.json           # Mars Global Surveyor SPK segments
 scripts/
   build_manifest.py    # Developer script to regenerate manifests from NAIF
-tests/                 # 61 tests, all mocked (no network/SPICE needed)
+tests/                 # 72 tests, all mocked (no network/SPICE needed)
 pyproject.toml         # hatchling build, heliospice-mcp CLI entrypoint
 server.json            # MCP registry manifest
 ```
@@ -32,8 +35,8 @@ server.json            # MCP registry manifest
 - **Kernel cache**: `HELIOSPICE_KERNEL_DIR` env var > `~/.heliospice/kernels/` default. helio-ai-agent overrides to `~/.helio-agent/spice_kernels/` via `agent/mcp_client.py`.
 - **Two kernel strategies**:
   - **Single-file missions** (PSP, SOLO, Juno, etc.): one SPK file per mission, downloaded in full via `ensure_mission_kernels()`.
-  - **Segmented missions** (Cassini, MRO, Mars 2020): many SPK files with time coverage recorded in bundled JSON manifests. Only segments overlapping the requested time window are downloaded, via `ensure_segmented_kernels()`.
-- **No SPK kernels exist for ACE, Wind, DSCOVR, MMS** — these L1 missions only have trajectories in JPL Horizons, not as downloadable SPK files. They have NAIF IDs but no entries in `MISSION_KERNELS` or `SEGMENTED_MISSIONS`.
+  - **Segmented missions** (Cassini, MRO, Mars 2020, LRO, Lunar Prospector, MGS): many SPK files with time coverage recorded in bundled JSON manifests. Only segments overlapping the requested time window are downloaded, via `ensure_segmented_kernels()`.
+- **No SPK kernels exist for ACE, Wind, DSCOVR** — these L1 missions only have trajectories in JPL Horizons, not as downloadable SPK files. They have NAIF IDs but no entries in `MISSION_KERNELS` or `SEGMENTED_MISSIONS`.
 - **Cache management**: `get_cache_info()` groups cached files by mission. `delete_mission_cache()`, `delete_cached_files()`, and `purge_cache()` allow selective or full cleanup. Every MCP tool response includes `cache_size_mb` so the LLM can monitor disk usage.
 - **MCP server** uses `_create_server()` factory pattern for lazy `mcp` import and testability.
 - **Thread safety**: KernelManager is a singleton with RLock — SPICE has a global kernel pool.
@@ -65,8 +68,8 @@ server.json            # MCP registry manifest
 
 ## Publication Status
 
-- **PyPI**: `heliospice` v0.4.1 — https://pypi.org/project/heliospice/
-- **MCP Registry**: `io.github.huangzesen/heliospice` v0.4.1 — published via `mcp-publisher`
+- **PyPI**: `heliospice` v0.4.3 — https://pypi.org/project/heliospice/
+- **MCP Registry**: `io.github.huangzesen/heliospice` v0.4.3 — published via `mcp-publisher`
 - **ClawHub**: `heliospice` skill — https://clawhub.ai/skill/heliospice
 - **GitHub**: https://github.com/huangzesen/heliospice
 

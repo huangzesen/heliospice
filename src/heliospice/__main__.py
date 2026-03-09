@@ -1,4 +1,4 @@
-"""Allow running heliospice.server via `python -m heliospice.server`."""
+"""Allow running heliospice as a module via `python -m heliospice`."""
 from .server import main
 
 main()
