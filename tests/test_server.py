@@ -77,32 +77,50 @@ class TestMCPTools:
 
     @patch("heliospice.ephemeris.get_kernel_manager")
     @patch("heliospice.ephemeris.spice")
-    def test_timeseries_rejects_large_response(self, mock_spice, mock_get_km):
-        """Timeseries with >10k points is rejected when allow_large_response=False."""
-        from heliospice.server import _MAX_RESPONSE_POINTS
+    def test_timeseries_writes_csv(self, mock_spice, mock_get_km):
+        """Timeseries mode writes data to CSV and returns metadata only."""
+        import tempfile
+        import os
 
         mock_km = MagicMock()
         mock_km.lock = MagicMock()
         mock_km.lock.__enter__ = MagicMock(return_value=None)
         mock_km.lock.__exit__ = MagicMock(return_value=False)
+        mock_km.get_cache_size_bytes.return_value = 0
         mock_get_km.return_value = mock_km
 
-        n_points = _MAX_RESPONSE_POINTS + 100
-        mock_spice.utc2et.side_effect = lambda t: 0.0 if "01-01" in t else float(n_points)
-        mock_spice.spkpos.return_value = ([1.496e8, 0.0, 0.0], 499.0)
-        mock_spice.et2utc.side_effect = [
-            f"2024-01-01T{i // 3600:02d}:{(i % 3600) // 60:02d}:{i % 60:02d}.000"
-            for i in range(n_points + 1)
-        ]
+        mock_spice.utc2et.return_value = 0.0
+        mock_spice.spkezr.return_value = (
+            [1.496e8, 0.0, 0.0, 0.0, 29.78, 0.0], 499.0
+        )
+        mock_spice.et2utc.return_value = "2024-01-01T00:00:00.000"
 
-        # Call the trajectory function and apply the same guard logic
         from heliospice.ephemeris import get_trajectory
         df = get_trajectory(
             target="EARTH", observer="SUN",
-            time_start="2024-01-01", time_end="2024-04-30",
-            step="1s", frame="ECLIPJ2000",
+            time_start="2024-01-01", time_end="2024-01-01",
+            step="1d", frame="ECLIPJ2000",
+            include_velocity=True,
         )
-        assert len(df) > _MAX_RESPONSE_POINTS
+
+        # Write CSV the same way the MCP tool does
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            output_path = f.name
+        try:
+            df.index.name = "time"
+            df.to_csv(output_path)
+            assert os.path.exists(output_path)
+            assert os.path.getsize(output_path) > 0
+            # Verify CSV has expected columns
+            import csv
+            with open(output_path) as csvf:
+                reader = csv.reader(csvf)
+                header = next(reader)
+                assert "time" in header
+                assert "x_km" in header
+                assert "vx_km_s" in header
+        finally:
+            os.unlink(output_path)
 
     @patch("heliospice.ephemeris.get_kernel_manager")
     @patch("heliospice.ephemeris.spice")
@@ -140,7 +158,8 @@ class TestMCPTools:
         server = _create_server()
         tools = list(server._tool_manager._tools.keys())
         assert len(tools) == 6
-        assert "get_spacecraft_ephemeris" in tools
+        assert "get_ephemeris" in tools
+        assert "get_spacecraft_ephemeris" not in tools
         assert "get_spacecraft_position" not in tools
         assert "get_spacecraft_trajectory" not in tools
         assert "get_spacecraft_velocity" not in tools

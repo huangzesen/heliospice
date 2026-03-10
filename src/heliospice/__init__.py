@@ -38,7 +38,7 @@ MCP tools (server.py)
 ---------------------
 The MCP server exposes 6 tools. Some combine multiple Python functions:
 
-  get_spacecraft_ephemeris  — Wraps get_position / get_state / get_trajectory
+  get_ephemeris             — Wraps get_state (single-time) / get_trajectory (timeseries → CSV)
   compute_distance          — MCP-only; distance between two bodies over time
   transform_coordinates     — Wraps transform_vector
   list_spice_missions       — Wraps list_supported_missions
@@ -70,7 +70,7 @@ Supported missions (43 spacecraft):
 Use ``list_supported_missions()`` for programmatic access.
 """
 
-__version__ = "0.4.3"
+__version__ = "0.5.0"
 
 from .ephemeris import get_position, get_trajectory, get_state
 from .frames import (

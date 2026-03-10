@@ -156,7 +156,7 @@ Add to `claude_desktop_config.json`:
 
 | Tool | Description |
 |------|-------------|
-| `get_spacecraft_ephemeris` | Position/velocity — single time or timeseries |
+| `get_ephemeris` | Position/velocity — single time (inline) or timeseries (CSV) |
 | `compute_distance` | Distance between two bodies |
 | `transform_coordinates` | Coordinate frame transform |
 | `list_spice_missions` | Supported missions |

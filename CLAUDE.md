@@ -68,8 +68,8 @@ server.json            # MCP registry manifest
 
 ## Publication Status
 
-- **PyPI**: `heliospice` v0.4.3 — https://pypi.org/project/heliospice/
-- **MCP Registry**: `io.github.huangzesen/heliospice` v0.4.3 — published via `mcp-publisher`
+- **PyPI**: `heliospice` v0.5.0 — https://pypi.org/project/heliospice/
+- **MCP Registry**: `io.github.huangzesen/heliospice` v0.5.0 — published via `mcp-publisher`
 - **ClawHub**: `heliospice` skill — https://clawhub.ai/skill/heliospice
 - **GitHub**: https://github.com/huangzesen/heliospice
 

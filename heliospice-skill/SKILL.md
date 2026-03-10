@@ -25,7 +25,7 @@ pip install heliospice
 
 ## Tools
 
-- `get_spacecraft_ephemeris` — Position at single time or timeseries (with optional velocity)
+- `get_ephemeris` — Position and velocity at single time (inline) or timeseries (written to CSV)
 - `compute_distance` — Distance between two bodies over time range (min/max/mean, closest approach)
 - `transform_coordinates` — Transform vectors between coordinate frames (RTN, J2000, ECLIPJ2000, etc.)
 - `list_spice_missions` — List all supported spacecraft

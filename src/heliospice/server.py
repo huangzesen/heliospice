@@ -22,15 +22,6 @@ try:
 except ImportError:
     FastMCP = None
 
-# ---------------------------------------------------------------------------
-# Response size limit
-# ---------------------------------------------------------------------------
-# Max data points returned in a single trajectory/velocity response.
-# Requests exceeding this are rejected with summary stats unless the caller
-# explicitly opts in with allow_large_response=True.
-_MAX_RESPONSE_POINTS = 50_000
-
-
 def _create_server() -> "FastMCP":
     """Create and configure the MCP server with all tools."""
     if FastMCP is None:
@@ -71,73 +62,78 @@ def _create_server() -> "FastMCP":
             "Earth-centered: GSE (Geocentric Solar Ecliptic), GEI (Geocentric Equatorial Inertial)\n"
             "Spacecraft: RTN (Radial-Tangential-Normal), requires spacecraft name\n\n"
             "=== Tools ===\n"
-            "1. get_spacecraft_ephemeris — Position/velocity at single time or timeseries. Returns position (x,y,z km), distance (km/AU), light time. Set include_velocity=True for velocity components. Use time_end for series mode (requires frame, observer). Default limit: 50,000 points; set allow_large_response=True to override.\n"
+            "1. get_ephemeris — Position and velocity of any body. Single-time returns inline JSON. Timeseries requires output_file path; full data is written to CSV and only metadata (summary stats, column info, preview) is returned in the response.\n"
             "2. compute_distance — Distance between two bodies over time range, returns min/max/mean and closest approach.\n"
             "3. transform_coordinates — Transform 3D vectors between frames (e.g., RTN to J2000). RTN requires spacecraft name.\n"
             "4. list_spice_missions — List all supported missions with kernel status.\n"
             "5. list_coordinate_frames — Show all frames with descriptions and usage guidance.\n"
             "6. manage_kernels — Check status, download/load kernels, delete cache, or purge all.\n\n"
             "=== Usage Notes ===\n"
-            "- frame is required for get_spacecraft_ephemeris — use list_coordinate_frames first to choose.\n"
+            "- frame is required for get_ephemeris — use list_coordinate_frames first to choose.\n"
             "- Observer defaults to SUN; use EARTH for geocentric, or any planet.\n"
             "- Time format: ISO 8601 (e.g., '2024-01-15T12:00:00' or '2024-01-15').\n"
             "- Step for timeseries: '1m', '1h', '6h', '1d' (default '1h').\n"
+            "- Timeseries data is written to CSV at the caller-specified output_file path. The MCP response contains only metadata.\n"
             "- Kernels auto-download on first query; cache location: ~/.heliospice/kernels/ (configurable via HELIOSPICE_KERNEL_DIR)."
         ),
     )
 
     @mcp.tool()
-    def get_spacecraft_ephemeris(
-        spacecraft: str,
+    def get_ephemeris(
+        target: str,
         time: str,
         frame: str,
         observer: str,
+        output_file: str,
         time_end: str = "",
         step: str = "1h",
-        include_velocity: bool = False,
-        allow_large_response: bool = False,
     ) -> dict:
-        """Get spacecraft position and/or velocity — single time or timeseries.
+        """Get position and velocity of any body — single time or timeseries.
 
-        Single-time mode (time_end empty): returns position in km, distance in km
-        and AU, and light time. With include_velocity=True, also returns velocity
-        components and speed.
+        Single-time mode (time_end empty): returns position and velocity inline.
+        output_file is ignored.
 
-        Timeseries mode (time_end provided): returns summary stats, preview rows,
-        and full data records. With include_velocity=True, adds velocity columns
-        and speed stats.
+        Timeseries mode (time_end provided): computes trajectory, writes full
+        data to CSV at output_file, and returns metadata only (no bulk data
+        in the response). The CSV contains columns: time, x_km, y_km, z_km,
+        vx_km_s, vy_km_s, vz_km_s, r_km, r_au.
 
         Args:
-            spacecraft: Spacecraft name (e.g., "PSP", "ACE", "Solar Orbiter", "Earth")
+            target: Target body (e.g., "PSP", "Earth", "Jupiter", "Cassini")
             time: UTC time in ISO 8601 format. For timeseries, this is the start time.
             frame: Coordinate frame (e.g., "ECLIPJ2000", "GSE", "RTN"). Use list_coordinate_frames to see all options.
             observer: Observer body (e.g., "SUN", "EARTH"). Use "EARTH" for geocentric.
+            output_file: File path where timeseries CSV data will be written. Parent directory must exist. Required but ignored for single-time queries.
             time_end: End time for timeseries (ISO 8601). Leave empty for single-time query.
             step: Time step for timeseries (e.g., "1m", "1h", "6h", "1d"). Only used when time_end is provided.
-            include_velocity: If True, include velocity components (vx, vy, vz in km/s) and speed.
-            allow_large_response: If True, overrides the default 50,000 point limit to allow large responses. Default False — large responses are rejected with summary stats and a hint to increase the step size or narrow the time range. Only used for timeseries.
+
+        Returns:
+            Single-time response:
+                status, cache_size_mb, x_km, y_km, z_km, vx_km_s, vy_km_s,
+                vz_km_s, r_km, r_au, speed_km_s, light_time_s, target,
+                observer, frame, time.
+
+            Timeseries response:
+                status, cache_size_mb, target, observer, frame, step,
+                time_start, time_end, n_points, n_columns, columns,
+                distance_au (dict with min, max, mean),
+                distance_km (dict with min, max),
+                speed_km_s (dict with min, max, mean),
+                output_file (absolute path to CSV), output_size_bytes,
+                preview (list of first/last 5 data points).
 
         Examples:
-            - get_spacecraft_ephemeris("PSP", "2024-01-15", "ECLIPJ2000", "SUN")
-            - get_spacecraft_ephemeris("PSP", "2024-01-15", "ECLIPJ2000", "SUN", include_velocity=True)
-            - get_spacecraft_ephemeris("PSP", "2024-01-01", "ECLIPJ2000", "SUN", time_end="2024-01-31", step="1h")
-            - get_spacecraft_ephemeris("PSP", "2024-01-01", "ECLIPJ2000", "SUN", time_end="2024-01-31", step="1h", include_velocity=True)
+            - get_ephemeris("PSP", "2024-01-15", "ECLIPJ2000", "SUN", "/tmp/psp.csv")
+            - get_ephemeris("Earth", "2024-01-01", "ECLIPJ2000", "SUN", "/tmp/earth.csv", time_end="2024-12-31", step="1d")
         """
         try:
             # --- Single-time mode ---
             if not time_end:
-                if include_velocity:
-                    from .ephemeris import get_state
+                from .ephemeris import get_state
 
-                    result = get_state(
-                        target=spacecraft, observer=observer, time=time, frame=frame
-                    )
-                else:
-                    from .ephemeris import get_position
-
-                    result = get_position(
-                        target=spacecraft, observer=observer, time=time, frame=frame
-                    )
+                result = get_state(
+                    target=target, observer=observer, time=time, frame=frame
+                )
                 return {
                     "status": "success",
                     "cache_size_mb": _cache_size_mb(),
@@ -147,53 +143,31 @@ def _create_server() -> "FastMCP":
             # --- Timeseries mode ---
             from .ephemeris import get_trajectory
             import numpy as np
+            import os
 
             df = get_trajectory(
-                target=spacecraft,
+                target=target,
                 observer=observer,
                 time_start=time,
                 time_end=time_end,
                 step=step,
                 frame=frame,
-                include_velocity=include_velocity,
+                include_velocity=True,
             )
 
-            # Summary stats
-            summary = {
-                "status": "success",
-                "cache_size_mb": _cache_size_mb(),
-                "spacecraft": spacecraft,
-                "observer": observer,
-                "frame": frame,
-                "time_start": str(df.index[0]),
-                "time_end": str(df.index[-1]),
-                "n_points": len(df),
-                "columns": list(df.columns),
-                "distance_au": {
-                    "min": round(float(df["r_au"].min()), 6),
-                    "max": round(float(df["r_au"].max()), 6),
-                    "mean": round(float(df["r_au"].mean()), 6),
-                },
-                "distance_km": {
-                    "min": round(float(df["r_km"].min()), 1),
-                    "max": round(float(df["r_km"].max()), 1),
-                },
-            }
+            # Compute speed column
+            speed = np.sqrt(
+                df["vx_km_s"] ** 2 + df["vy_km_s"] ** 2 + df["vz_km_s"] ** 2
+            )
+            df["speed_km_s"] = speed
 
-            # Add speed stats when velocity is included
-            if include_velocity:
-                speed = np.sqrt(
-                    df["vx_km_s"] ** 2 + df["vy_km_s"] ** 2 + df["vz_km_s"] ** 2
-                )
-                df["speed_km_s"] = speed
-                summary["columns"] = list(df.columns)
-                summary["speed_km_s"] = {
-                    "min": round(float(speed.min()), 3),
-                    "max": round(float(speed.max()), 3),
-                    "mean": round(float(speed.mean()), 3),
-                }
+            # Write CSV
+            output_path = os.path.abspath(output_file)
+            df.index.name = "time"
+            df.to_csv(output_path)
+            output_size = os.path.getsize(output_path)
 
-            # Preview: first/last few data points
+            # Build metadata response (no bulk data)
             n_preview = min(5, len(df))
             preview_rows = []
             for idx in list(range(n_preview)) + list(
@@ -206,28 +180,37 @@ def _create_server() -> "FastMCP":
                         float(row[col]), 6 if "au" in col else 3 if "km_s" in col else 1
                     )
                 preview_rows.append(entry)
-            summary["preview"] = preview_rows
 
-            # Guard: reject large responses unless caller opted in
-            if len(df) > _MAX_RESPONSE_POINTS and not allow_large_response:
-                summary["status"] = "error"
-                summary["message"] = (
-                    f"Response contains {len(df):,} data points, exceeding the "
-                    f"{_MAX_RESPONSE_POINTS:,} point limit. Either increase the step "
-                    f"size, narrow the time range, or set allow_large_response=True."
-                )
-                return summary
-
-            # Full data for downstream storage/plotting
-            records = []
-            for ts, row in df.iterrows():
-                record = {"time": str(ts)}
-                for col in df.columns:
-                    record[col] = float(row[col])
-                records.append(record)
-            summary["data"] = records
-
-            return summary
+            return {
+                "status": "success",
+                "cache_size_mb": _cache_size_mb(),
+                "target": target,
+                "observer": observer,
+                "frame": frame,
+                "step": step,
+                "time_start": str(df.index[0]),
+                "time_end": str(df.index[-1]),
+                "n_points": len(df),
+                "n_columns": len(df.columns),
+                "columns": list(df.columns),
+                "distance_au": {
+                    "min": round(float(df["r_au"].min()), 6),
+                    "max": round(float(df["r_au"].max()), 6),
+                    "mean": round(float(df["r_au"].mean()), 6),
+                },
+                "distance_km": {
+                    "min": round(float(df["r_km"].min()), 1),
+                    "max": round(float(df["r_km"].max()), 1),
+                },
+                "speed_km_s": {
+                    "min": round(float(speed.min()), 3),
+                    "max": round(float(speed.max()), 3),
+                    "mean": round(float(speed.mean()), 3),
+                },
+                "output_file": output_path,
+                "output_size_bytes": output_size,
+                "preview": preview_rows,
+            }
 
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -250,6 +233,13 @@ def _create_server() -> "FastMCP":
             time_start: Start time (ISO 8601)
             time_end: End time (ISO 8601)
             step: Time step (e.g., "1h", "6h", "1d")
+
+        Returns:
+            status, cache_size_mb, target1, target2, time_start, time_end,
+            n_points,
+            distance_au (dict with min, max, mean),
+            distance_km (dict with min, max, mean),
+            closest_approach (dict with time, distance_km, distance_au).
 
         Examples:
             - compute_distance("PSP", "SUN", "2024-01-01", "2024-01-31", "1h")
@@ -317,6 +307,10 @@ def _create_server() -> "FastMCP":
             to_frame: Target frame (e.g., "ECLIPJ2000", "J2000", "RTN")
             spacecraft: Spacecraft name (required if RTN frame is used)
 
+        Returns:
+            status, cache_size_mb, input_vector, output_vector (list of 3 floats),
+            from_frame, to_frame, time, magnitude (vector magnitude).
+
         Examples:
             - transform_coordinates([1.0, 0.0, 0.0], "2024-01-15", "J2000", "ECLIPJ2000")
             - transform_coordinates([5.0, -3.0, 1.0], "2024-01-15", "RTN", "J2000", spacecraft="PSP")
@@ -352,6 +346,11 @@ def _create_server() -> "FastMCP":
 
         Returns the full list of missions that can be queried for positions
         and trajectories.
+
+        Returns:
+            status, mission_count,
+            missions (list of dicts, each with mission name, naif_id,
+            mission_key, kernels_loaded, segmented).
         """
         from .missions import (
             list_supported_missions,
@@ -384,6 +383,11 @@ def _create_server() -> "FastMCP":
 
         Returns each frame's full name, what it is, and when to use it.
         Call this to understand which frame to choose for a given analysis task.
+
+        Returns:
+            status, frame_count,
+            frames (list of dicts, each with frame name, full_name,
+            description, and usage guidance).
         """
         from .frames import list_frames_with_descriptions
 
@@ -413,6 +417,15 @@ def _create_server() -> "FastMCP":
                 - "purge" — delete ALL cached kernel files and unload everything
             mission: Mission name (required for "download", "load", "delete" by mission, and "check_remote")
             filenames: List of specific filenames to delete (for "delete" action only)
+
+        Returns:
+            All actions return status. Additionally:
+            - "status": loaded_kernels (list), loaded_count, cache (dict grouped by mission with file sizes).
+            - "download"/"load": message, loaded (list of loaded kernel filenames).
+            - "unload_all": message.
+            - "delete": deleted (list), not_found (list), freed_bytes.
+            - "check_remote": cache_size_mb, mission, configured (list), available (list), new_files (list).
+            - "purge": deleted (list), freed_bytes.
         """
         from .kernel_manager import get_kernel_manager
 

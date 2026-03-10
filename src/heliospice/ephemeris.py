@@ -163,8 +163,9 @@ def get_position(
         frame: Reference frame (default: "ECLIPJ2000").
 
     Returns:
-        Dict with keys: x, y, z (km), r_km, r_au, light_time_s,
-        target, observer, frame, time.
+        Dict with keys: x_km, y_km, z_km (position in km),
+        r_km (distance in km), r_au (distance in AU),
+        light_time_s, target, observer, frame, time.
     """
     target_id, target_key = _resolve_body(target)
     observer_id, observer_key = _resolve_body(observer)
@@ -219,8 +220,10 @@ def get_state(
         frame: Reference frame.
 
     Returns:
-        Dict with position (x,y,z km), velocity (vx,vy,vz km/s),
-        distance (r_km, r_au), speed_km_s, light_time_s.
+        Dict with keys: x_km, y_km, z_km (position in km),
+        vx_km_s, vy_km_s, vz_km_s (velocity in km/s),
+        r_km (distance in km), r_au (distance in AU),
+        speed_km_s, light_time_s, target, observer, frame, time.
     """
     target_id, target_key = _resolve_body(target)
     observer_id, observer_key = _resolve_body(observer)
