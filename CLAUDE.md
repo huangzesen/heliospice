@@ -114,12 +114,9 @@ mcp-publisher publish  # if manual update needed
 clawhub publish ./xhelio-spice-skill --slug xhelio-spice --name "XHelio-SPICE" --version {version} --tags "space,ephemeris,nasa,planets,spacecraft" --changelog "Version {version}"
 ```
 
-## Relationship to helio-ai-agent
+## Relationship to xhelio
 
-- helio-ai-agent depends on `xhelio-spice[mcp]>=0.1.0` (in `requirements.txt`)
-- `agent/mcp_client.py` spawns `xhelio-spice-mcp` subprocess, communicates via MCP stdio
-- `agent/tools.py` defines 7 SPICE tool schemas exposed to the LLM
-- Kernel cache shared: mcp_client sets `XHELIO_SPICE_KERNEL_DIR=~/.helio-agent/spice_kernels/`
+xhelio (at `../xhelio`, formerly helio-ai-agent) **no longer depends on xhelio-spice** as of March 2026. The SPICE envoy layer was removed — the envoy infrastructure is intact but empty. xhelio-spice is now a standalone package. If re-integration is needed, xhelio's envoy registry (`agent/envoy_kinds/registry.py`) and `.mcp.json` are ready to accept new MCP-backed data sources.
 
 ## Known Issues / TODO
 
