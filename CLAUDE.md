@@ -1,20 +1,20 @@
-# CLAUDE.md — heliospice
+# CLAUDE.md — xhelio-spice
 
 ## What This Is
 
-**heliospice** is a standalone Python package that wraps SpiceyPy with automatic SPICE kernel management. Users call `get_position("PSP", ...)` and heliospice handles kernel download, caching, loading, and computation. It was extracted from helio-ai-agent's `spice/` module in Feb 2026.
+**xhelio-spice** is a standalone Python package that wraps SpiceyPy with automatic SPICE kernel management. Users call `get_position("PSP", ...)` and xhelio-spice handles kernel download, caching, loading, and computation. It was extracted from helio-ai-agent's `spice/` module in Feb 2026.
 
 ## Repository Structure
 
 ```
-src/heliospice/
+src/xhelio_spice/
   __init__.py          # Public API re-exports, version
   missions.py          # NAIF IDs, kernel URLs, name resolution, SEGMENTED_MISSIONS
   kernel_manager.py    # Download, cache, load/unload kernels (singleton)
   ephemeris.py         # get_position, get_trajectory, get_state
   frames.py            # transform_vector, coordinate frame listings
   server.py            # MCP server (FastMCP, 6 tools)
-  __main__.py          # python -m heliospice entrypoint
+  __main__.py          # python -m xhelio_spice entrypoint
   manifests/           # Bundled JSON manifests for segmented missions
     __init__.py
     cassini.json       # 505 SPK segments (2001–2017)
@@ -26,13 +26,13 @@ src/heliospice/
 scripts/
   build_manifest.py    # Developer script to regenerate manifests from NAIF
 tests/                 # 72 tests, all mocked (no network/SPICE needed)
-pyproject.toml         # hatchling build, heliospice-mcp CLI entrypoint
+pyproject.toml         # hatchling build, xhelio-spice-mcp CLI entrypoint
 server.json            # MCP registry manifest
 ```
 
 ## Key Design Decisions
 
-- **Kernel cache**: `HELIOSPICE_KERNEL_DIR` env var > `~/.heliospice/kernels/` default. helio-ai-agent overrides to `~/.helio-agent/spice_kernels/` via `agent/mcp_client.py`.
+- **Kernel cache**: `XHELIO_SPICE_KERNEL_DIR` env var > `~/.xhelio_spice/kernels/` default. helio-ai-agent overrides to `~/.helio-agent/spice_kernels/` via `agent/mcp_client.py`.
 - **Two kernel strategies**:
   - **Single-file missions** (PSP, SOLO, Juno, etc.): one SPK file per mission, downloaded in full via `ensure_mission_kernels()`.
   - **Segmented missions** (Cassini, MRO, Mars 2020, LRO, Lunar Prospector, MGS): many SPK files with time coverage recorded in bundled JSON manifests. Only segments overlapping the requested time window are downloaded, via `ensure_segmented_kernels()`.
@@ -68,13 +68,13 @@ server.json            # MCP registry manifest
 
 ## Publication Status
 
-- **PyPI**: `heliospice` v0.5.0 — https://pypi.org/project/heliospice/
-- **MCP Registry**: `io.github.huangzesen/heliospice` v0.5.0 — published via `mcp-publisher`
-- **ClawHub**: `heliospice` skill — https://clawhub.ai/skill/heliospice
-- **GitHub**: https://github.com/huangzesen/heliospice
+- **PyPI**: `xhelio-spice` v0.5.0 — https://pypi.org/project/xhelio-spice/
+- **MCP Registry**: `io.github.huangzesen/xhelio-spice` v0.5.0 — published via `mcp-publisher`
+- **ClawHub**: `xhelio-spice` skill — https://clawhub.ai/skill/xhelio-spice
+- **GitHub**: https://github.com/huangzesen/xhelio-spice
 
 To publish a new version:
-1. Bump version in `pyproject.toml`, `src/heliospice/__init__.py`, and `server.json`
+1. Bump version in `pyproject.toml`, `src/xhelio_spice/__init__.py`, and `server.json`
 2. `python -m build && twine upload dist/*` (PyPI)
 3. `mcp-publisher login github && mcp-publisher publish` (MCP registry)
 
@@ -89,37 +89,37 @@ pip install -e ".[dev]"
 python -m pytest tests/ -x -q
 
 # Integration test (downloads real kernels, slow first run)
-python -c "from heliospice import get_position; print(get_position('PSP', time='2024-01-15'))"
-python -c "from heliospice import get_position; print(get_position('Cassini', time='2005-06-15'))"
+python -c "from xhelio_spice import get_position; print(get_position('PSP', time='2024-01-15'))"
+python -c "from xhelio_spice import get_position; print(get_position('Cassini', time='2005-06-15'))"
 
 # Regenerate segmented manifests (developer only, downloads from NAIF)
 python scripts/build_manifest.py all
 
 # MCP server
-heliospice-mcp          # or: python -m heliospice.server
+xhelio-spice-mcp        # or: python -m xhelio_spice.server
 
 # Build + publish
 python -m build
-twine upload dist/heliospice-{version}*
+twine upload dist/xhelio_spice-{version}*
 
 # Full publish workflow (git → PyPI → MCP registry → ClawHub)
-# 1. Update version in pyproject.toml, src/heliospice/__init__.py, and server.json
+# 1. Update version in pyproject.toml, src/xhelio_spice/__init__.py, and server.json
 # 2. Git push
 git add -A && git commit -m "Bump version to {version}" && git push
 # 3. Build + PyPI
-python -m build && twine upload dist/heliospice-{version}*
+python -m build && twine upload dist/xhelio_spice-{version}*
 # 4. MCP registry auto-discovers from PyPI (or use mcp-publisher)
 mcp-publisher publish  # if manual update needed
 # 5. Publish to ClawHub (OpenClaw skills)
-clawhub publish ./heliospice-skill --slug heliospice --name "Heliospice" --version {version} --tags "space,ephemeris,nasa,planets,spacecraft" --changelog "Version {version}"
+clawhub publish ./xhelio-spice-skill --slug xhelio-spice --name "XHelio-SPICE" --version {version} --tags "space,ephemeris,nasa,planets,spacecraft" --changelog "Version {version}"
 ```
 
 ## Relationship to helio-ai-agent
 
-- helio-ai-agent depends on `heliospice[mcp]>=0.1.0` (in `requirements.txt`)
-- `agent/mcp_client.py` spawns `heliospice-mcp` subprocess, communicates via MCP stdio
+- helio-ai-agent depends on `xhelio-spice[mcp]>=0.1.0` (in `requirements.txt`)
+- `agent/mcp_client.py` spawns `xhelio-spice-mcp` subprocess, communicates via MCP stdio
 - `agent/tools.py` defines 7 SPICE tool schemas exposed to the LLM
-- Kernel cache shared: mcp_client sets `HELIOSPICE_KERNEL_DIR=~/.helio-agent/spice_kernels/`
+- Kernel cache shared: mcp_client sets `XHELIO_SPICE_KERNEL_DIR=~/.helio-agent/spice_kernels/`
 
 ## Known Issues / TODO
 

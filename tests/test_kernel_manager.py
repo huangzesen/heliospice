@@ -1,13 +1,13 @@
-"""Tests for heliospice.kernel_manager — kernel download, cache, and loading."""
+"""Tests for xhelio_spice.kernel_manager — kernel download, cache, and loading."""
 
 from unittest.mock import patch
 import pytest
 
 
 class TestKernelManager:
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_load_kernel_idempotent(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         fake_path = tmp_path / "test.tls"
@@ -19,9 +19,9 @@ class TestKernelManager:
         # furnsh should only be called once
         assert mock_spice.furnsh.call_count == 1
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_unload_all(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         fake_path = tmp_path / "test.tls"
@@ -34,9 +34,9 @@ class TestKernelManager:
         assert km.list_loaded() == []
         assert km._generic_loaded is False
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_list_loaded(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         f1 = tmp_path / "a.tls"
@@ -50,9 +50,9 @@ class TestKernelManager:
         assert "a.tls" in loaded
         assert "b.bsp" in loaded
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_cache_size(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         f1 = tmp_path / "test.bsp"
@@ -60,9 +60,9 @@ class TestKernelManager:
 
         assert km.get_cache_size_bytes() == 1024
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_cache_info(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         f1 = tmp_path / "test.bsp"
@@ -76,10 +76,10 @@ class TestKernelManager:
         assert info["missions"]["UNKNOWN"]["file_count"] == 1
         assert info["missions"]["UNKNOWN"]["files"][0]["name"] == "test.bsp"
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
     def test_ensure_generic_kernels_idempotent(self, mock_download, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         # Mock download to return a fake path
@@ -92,10 +92,10 @@ class TestKernelManager:
         km.ensure_generic_kernels()  # should be no-op
         assert mock_download.call_count == first_count
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
     def test_ensure_mission_kernels(self, mock_download, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_download.return_value = tmp_path / "fake.bsp"
@@ -104,10 +104,10 @@ class TestKernelManager:
         km.ensure_mission_kernels("PSP")
         assert "PSP" in km._mission_kernels_loaded
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
     def test_ensure_mission_kernels_unknown(self, mock_download, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
         mock_download.return_value = tmp_path / "fake.tls"
         (tmp_path / "fake.tls").write_text("fake")
@@ -115,29 +115,29 @@ class TestKernelManager:
         with pytest.raises(KeyError, match="No SPICE kernels"):
             km.ensure_mission_kernels("UNKNOWN_MISSION")
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_default_kernel_dir(self, mock_spice):
-        """Default kernel dir is ~/.heliospice/kernels/."""
+        """Default kernel dir is ~/.xhelio_spice/kernels/."""
         from pathlib import Path
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager()
-        expected = Path.home() / ".heliospice" / "kernels"
+        expected = Path.home() / ".xhelio_spice" / "kernels"
         assert km.kernel_dir == expected
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_env_var_kernel_dir(self, mock_spice, tmp_path, monkeypatch):
-        """HELIOSPICE_KERNEL_DIR env var overrides default."""
-        from heliospice.kernel_manager import KernelManager
+        """XHELIO_SPICE_KERNEL_DIR env var overrides default."""
+        from xhelio_spice.kernel_manager import KernelManager
         custom_dir = tmp_path / "custom_kernels"
         custom_dir.mkdir()
-        monkeypatch.setenv("HELIOSPICE_KERNEL_DIR", str(custom_dir))
+        monkeypatch.setenv("XHELIO_SPICE_KERNEL_DIR", str(custom_dir))
         km = KernelManager()
         assert km.kernel_dir == custom_dir
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_delete_cached_files(self, mock_spice, tmp_path):
         """delete_cached_files removes files and unloads from SPICE."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         f1 = tmp_path / "a.bsp"
@@ -154,10 +154,10 @@ class TestKernelManager:
         assert not f2.exists()
         assert str(f1.resolve()) not in km._loaded_kernels
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_delete_cached_files_not_found(self, mock_spice, tmp_path):
         """delete_cached_files reports errors for missing files."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         result = km.delete_cached_files(["nonexistent.bsp"])
@@ -165,10 +165,10 @@ class TestKernelManager:
         assert "errors" in result
         assert any("not found" in e for e in result["errors"])
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_purge_cache(self, mock_spice, tmp_path):
         """purge_cache removes all files and clears state."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         for name in ["a.bsp", "b.bsp", "c.tls"]:
@@ -181,10 +181,10 @@ class TestKernelManager:
         assert km.list_loaded() == []
         assert list(tmp_path.iterdir()) == []
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_cache_info_groups_by_mission(self, mock_spice, tmp_path):
         """get_cache_info groups files by mission."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         # Create a file matching a generic kernel name
@@ -212,11 +212,11 @@ class TestCheckRemoteKernels:
 <a href="README.txt">README.txt</a>                         2024-01-01 00:00  1.2K
 </pre></body></html>"""
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     @patch("requests.get")
     def test_parses_directory_and_finds_other_files(self, mock_get, mock_spice, tmp_path):
         """Parses NAIF HTML listing and identifies other_files correctly."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_resp = mock_get.return_value
@@ -240,11 +240,11 @@ class TestCheckRemoteKernels:
         assert "juno_rec_orbit_v2.bsp" in result["other_files"]
         assert "juno_rec_orbit.bsp" not in result["other_files"]
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     @patch("requests.get")
     def test_filters_only_bsp_files(self, mock_get, mock_spice, tmp_path):
         """Only .bsp files are included, not .txt or other extensions."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         html = """<html><body><pre>
@@ -268,11 +268,11 @@ class TestCheckRemoteKernels:
         assert "data.csv" not in all_bsp
         assert "notes.tls" not in all_bsp
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     @patch("requests.get")
     def test_handles_http_error_gracefully(self, mock_get, mock_spice, tmp_path):
         """HTTP errors are captured in the result, not raised as exceptions."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_get.return_value.raise_for_status.side_effect = Exception("404 Not Found")
@@ -285,10 +285,10 @@ class TestCheckRemoteKernels:
         assert "404" in result["directories"][0]["error"]
         assert result["directories"][0]["all_bsp_files"] == []
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_raises_keyerror_for_segmented_mission(self, mock_spice, tmp_path):
         """Raises KeyError when called with a segmented mission."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         with pytest.raises(KeyError, match="segmented kernels"):

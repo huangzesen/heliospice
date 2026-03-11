@@ -11,7 +11,7 @@ import pytest
 
 class TestSegmentedMissions:
     def test_segmented_missions_dict(self):
-        from heliospice.missions import SEGMENTED_MISSIONS
+        from xhelio_spice.missions import SEGMENTED_MISSIONS
         assert "CASSINI" in SEGMENTED_MISSIONS
         assert "MRO" in SEGMENTED_MISSIONS
         assert "MARS_2020" in SEGMENTED_MISSIONS
@@ -24,11 +24,11 @@ class TestSegmentedMissions:
         assert SEGMENTED_MISSIONS["MGS"] == "mgs.json"
 
     def test_has_kernels_standard(self):
-        from heliospice.missions import has_kernels
+        from xhelio_spice.missions import has_kernels
         assert has_kernels("PSP") is True
 
     def test_has_kernels_segmented(self):
-        from heliospice.missions import has_kernels
+        from xhelio_spice.missions import has_kernels
         assert has_kernels("CASSINI") is True
         assert has_kernels("MRO") is True
         assert has_kernels("MARS_2020") is True
@@ -37,12 +37,12 @@ class TestSegmentedMissions:
         assert has_kernels("MGS") is True
 
     def test_has_kernels_none(self):
-        from heliospice.missions import has_kernels
+        from xhelio_spice.missions import has_kernels
         assert has_kernels("ACE") is False
         assert has_kernels("WIND") is False
 
     def test_list_supported_missions_includes_segmented(self):
-        from heliospice.missions import list_supported_missions
+        from xhelio_spice.missions import list_supported_missions
         missions = list_supported_missions()
         cassini = next(m for m in missions if m["mission_key"] == "CASSINI")
         assert cassini["has_kernels"] is True
@@ -63,27 +63,27 @@ SAMPLE_MANIFEST = [
 
 
 class TestKernelManagerSegmented:
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_segmented_files_loaded_init(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
         assert km._segmented_files_loaded == set()
 
-    @patch("heliospice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.spice")
     def test_unload_all_clears_segmented(self, mock_spice, tmp_path):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
         km._segmented_files_loaded.add("some_file.bsp")
         km.unload_all()
         assert km._segmented_files_loaded == set()
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
-    @patch("heliospice.kernel_manager.KernelManager._load_manifest")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.KernelManager._load_manifest")
     def test_ensure_segmented_kernels_loads_matching(
         self, mock_manifest, mock_download, mock_spice, tmp_path
     ):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_manifest.return_value = SAMPLE_MANIFEST
@@ -104,13 +104,13 @@ class TestKernelManagerSegmented:
         assert "seg_b.bsp" in km._segmented_files_loaded
         assert "seg_c.bsp" not in km._segmented_files_loaded
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
-    @patch("heliospice.kernel_manager.KernelManager._load_manifest")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.KernelManager._load_manifest")
     def test_ensure_segmented_kernels_single_date(
         self, mock_manifest, mock_download, mock_spice, tmp_path
     ):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_manifest.return_value = SAMPLE_MANIFEST
@@ -124,13 +124,13 @@ class TestKernelManagerSegmented:
         assert "seg_c.bsp" in km._segmented_files_loaded
         assert "seg_a.bsp" not in km._segmented_files_loaded
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
-    @patch("heliospice.kernel_manager.KernelManager._load_manifest")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.KernelManager._load_manifest")
     def test_ensure_segmented_kernels_idempotent(
         self, mock_manifest, mock_download, mock_spice, tmp_path
     ):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_manifest.return_value = SAMPLE_MANIFEST
@@ -145,12 +145,12 @@ class TestKernelManagerSegmented:
         km.ensure_segmented_kernels("CASSINI", date(2005, 2, 1), date(2005, 2, 1))
         assert mock_download.call_count == first_download_count
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager._load_manifest")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager._load_manifest")
     def test_ensure_segmented_kernels_no_coverage(
         self, mock_manifest, mock_spice, tmp_path
     ):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_manifest.return_value = SAMPLE_MANIFEST
@@ -158,12 +158,12 @@ class TestKernelManagerSegmented:
         with pytest.raises(ValueError, match="No kernel segments"):
             km.ensure_segmented_kernels("CASSINI", date(2010, 1, 1), date(2010, 2, 1))
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager._load_manifest")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager._load_manifest")
     def test_ensure_segmented_kernels_empty_manifest(
         self, mock_manifest, mock_spice, tmp_path
     ):
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_manifest.return_value = []
@@ -171,13 +171,13 @@ class TestKernelManagerSegmented:
         with pytest.raises(ValueError, match="empty"):
             km.ensure_segmented_kernels("CASSINI", date(2005, 1, 1), date(2005, 2, 1))
 
-    @patch("heliospice.kernel_manager.spice")
-    @patch("heliospice.kernel_manager.KernelManager.download_kernel")
+    @patch("xhelio_spice.kernel_manager.spice")
+    @patch("xhelio_spice.kernel_manager.KernelManager.download_kernel")
     def test_ensure_mission_kernels_segmented_error(
         self, mock_download, mock_spice, tmp_path
     ):
         """ensure_mission_kernels raises informative error for segmented missions."""
-        from heliospice.kernel_manager import KernelManager
+        from xhelio_spice.kernel_manager import KernelManager
         km = KernelManager(kernel_dir=tmp_path)
 
         mock_download.return_value = tmp_path / "fake.tls"
@@ -191,29 +191,29 @@ class TestKernelManagerSegmented:
 
 class TestToDate:
     def test_from_iso_string(self):
-        from heliospice.ephemeris import _to_date
+        from xhelio_spice.ephemeris import _to_date
         assert _to_date("2005-06-15") == date(2005, 6, 15)
 
     def test_from_iso_datetime_string(self):
-        from heliospice.ephemeris import _to_date
+        from xhelio_spice.ephemeris import _to_date
         assert _to_date("2005-06-15T12:00:00") == date(2005, 6, 15)
 
     def test_from_datetime(self):
         from datetime import datetime
-        from heliospice.ephemeris import _to_date
+        from xhelio_spice.ephemeris import _to_date
         dt = datetime(2005, 6, 15, 12, 0, 0)
         assert _to_date(dt) == date(2005, 6, 15)
 
     def test_from_date(self):
-        from heliospice.ephemeris import _to_date
+        from xhelio_spice.ephemeris import _to_date
         d = date(2005, 6, 15)
         assert _to_date(d) == d
 
 
 class TestEnsureKernelsSegmented:
-    @patch("heliospice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
     def test_segmented_mission_calls_ensure_segmented(self, mock_get_km):
-        from heliospice.ephemeris import _ensure_kernels
+        from xhelio_spice.ephemeris import _ensure_kernels
 
         mock_km = MagicMock()
         mock_get_km.return_value = mock_km
@@ -224,9 +224,9 @@ class TestEnsureKernelsSegmented:
             "CASSINI", date(2005, 1, 1), date(2005, 2, 1)
         )
 
-    @patch("heliospice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
     def test_segmented_mission_without_time_raises(self, mock_get_km):
-        from heliospice.ephemeris import _ensure_kernels
+        from xhelio_spice.ephemeris import _ensure_kernels
 
         mock_km = MagicMock()
         mock_get_km.return_value = mock_km
@@ -234,9 +234,9 @@ class TestEnsureKernelsSegmented:
         with pytest.raises(ValueError, match="requires.*time range"):
             _ensure_kernels("CASSINI", "SUN")
 
-    @patch("heliospice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
     def test_standard_mission_unchanged(self, mock_get_km):
-        from heliospice.ephemeris import _ensure_kernels
+        from xhelio_spice.ephemeris import _ensure_kernels
 
         mock_km = MagicMock()
         mock_get_km.return_value = mock_km
@@ -250,13 +250,13 @@ class TestEnsureKernelsSegmented:
 # ---- server.py tests ----
 
 class TestServerSegmented:
-    @patch("heliospice.server.FastMCP", new_callable=lambda: type("FakeMCP", (), {
+    @patch("xhelio_spice.server.FastMCP", new_callable=lambda: type("FakeMCP", (), {
         "__init__": lambda self, *a, **kw: None,
         "tool": lambda self: lambda f: f,
     }))
     def test_list_spice_missions_has_segmented_flag(self, _):
         """list_spice_missions output includes 'segmented' flag."""
-        from heliospice.missions import list_supported_missions, SEGMENTED_MISSIONS
+        from xhelio_spice.missions import list_supported_missions, SEGMENTED_MISSIONS
 
         missions = list_supported_missions()
         for m in missions:

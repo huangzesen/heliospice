@@ -1,25 +1,25 @@
-# heliospice
+# xhelio-spice
 
 Spacecraft ephemeris made easy — auto-managed SPICE kernels for heliophysics missions.
 
-**heliospice** wraps [SpiceyPy](https://github.com/AndrewAnnex/SpiceyPy) with automatic kernel download, caching, and loading. Ask for a spacecraft position and heliospice handles the rest: downloading the right NAIF kernels, loading them in the correct order, and returning results as Python dicts or pandas DataFrames.
+**xhelio-spice** wraps [SpiceyPy](https://github.com/AndrewAnnex/SpiceyPy) with automatic kernel download, caching, and loading. Ask for a spacecraft position and xhelio-spice handles the rest: downloading the right NAIF kernels, loading them in the correct order, and returning results as Python dicts or pandas DataFrames.
 
 ## Installation
 
 ```bash
-pip install heliospice
+pip install xhelio-spice
 ```
 
 For MCP server support (Claude Desktop, Claude Code, Cursor, etc.):
 
 ```bash
-pip install heliospice[mcp]
+pip install xhelio-spice[mcp]
 ```
 
 ## Quick Start
 
 ```python
-from heliospice import get_position, get_trajectory
+from xhelio_spice import get_position, get_trajectory
 
 # Where is Parker Solar Probe right now?
 pos = get_position("PSP", observer="SUN", time="2024-01-15", frame="ECLIPJ2000")
@@ -34,7 +34,7 @@ df = get_trajectory(
 print(df[["r_au"]].describe())
 ```
 
-Kernels are automatically downloaded from [NAIF](https://naif.jpl.nasa.gov/) on first use and cached in `~/.heliospice/kernels/`.
+Kernels are automatically downloaded from [NAIF](https://naif.jpl.nasa.gov/) on first use and cached in `~/.xhelio_spice/kernels/`.
 
 ## Supported Missions
 
@@ -59,7 +59,7 @@ Sun, Earth, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto
 ### Position & Trajectory
 
 ```python
-from heliospice import get_position, get_trajectory, get_state
+from xhelio_spice import get_position, get_trajectory, get_state
 
 # Single position
 pos = get_position("ACE", observer="EARTH", time="2024-06-01", frame="GSE")
@@ -79,7 +79,7 @@ df = get_trajectory(
 ### Coordinate Transforms
 
 ```python
-from heliospice import transform_vector, list_available_frames
+from xhelio_spice import transform_vector, list_available_frames
 
 # J2000 to Ecliptic
 v_ecl = transform_vector([1.0, 0.0, 0.0], "2024-01-15", "J2000", "ECLIPJ2000")
@@ -98,7 +98,7 @@ print(list_available_frames())
 ### Mission Registry
 
 ```python
-from heliospice import resolve_mission, list_supported_missions
+from xhelio_spice import resolve_mission, list_supported_missions
 
 # Resolve name aliases
 naif_id, key = resolve_mission("Parker Solar Probe")  # -> (-96, "PSP")
@@ -110,7 +110,7 @@ missions = list_supported_missions()
 ### Kernel Management
 
 ```python
-from heliospice import get_kernel_manager
+from xhelio_spice import get_kernel_manager
 
 km = get_kernel_manager()
 km.ensure_mission_kernels("PSP")  # Download + load
@@ -122,20 +122,20 @@ km.unload_all()                    # Free memory
 
 | Method | Description |
 |--------|-------------|
-| `HELIOSPICE_KERNEL_DIR` env var | Override kernel cache directory |
+| `XHELIO_SPICE_KERNEL_DIR` env var | Override kernel cache directory |
 | `KernelManager(kernel_dir=...)` | Per-instance override |
-| Default | `~/.heliospice/kernels/` |
+| Default | `~/.xhelio_spice/kernels/` |
 
 ## MCP Server
 
-heliospice includes an [MCP](https://modelcontextprotocol.io/) server for LLM tool use:
+xhelio-spice includes an [MCP](https://modelcontextprotocol.io/) server for LLM tool use:
 
 ```bash
 # Run directly
-heliospice-mcp
+xhelio-spice-mcp
 
 # Or via Python
-python -m heliospice.server
+python -m xhelio_spice.server
 ```
 
 ### Claude Desktop Configuration
@@ -145,8 +145,8 @@ Add to `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "heliospice": {
-      "command": "heliospice-mcp"
+    "xhelio-spice": {
+      "command": "xhelio-spice-mcp"
     }
   }
 }
@@ -167,4 +167,4 @@ Add to `claude_desktop_config.json`:
 
 MIT
 
-<!-- mcp-name: io.github.huangzesen/heliospice -->
+<!-- mcp-name: io.github.huangzesen/xhelio-spice -->

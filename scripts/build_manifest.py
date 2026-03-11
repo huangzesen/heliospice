@@ -24,7 +24,7 @@ import spiceypy as spice
 from bs4 import BeautifulSoup
 
 # Where to write output manifests
-MANIFEST_DIR = Path(__file__).resolve().parent.parent / "src" / "heliospice" / "manifests"
+MANIFEST_DIR = Path(__file__).resolve().parent.parent / "src" / "xhelio_spice" / "manifests"
 
 # LSK needed for time conversion
 NAIF_BASE = "https://naif.jpl.nasa.gov/pub/naif"

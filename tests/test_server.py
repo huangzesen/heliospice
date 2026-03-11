@@ -1,4 +1,4 @@
-"""Tests for heliospice.server — MCP tool functions."""
+"""Tests for xhelio_spice.server — MCP tool functions."""
 
 from unittest.mock import MagicMock, patch
 import pytest
@@ -16,15 +16,15 @@ class TestMCPTools:
 
     def _get_tool_func(self, name: str):
         """Get a tool function from the server by creating the server and extracting the tool."""
-        from heliospice.server import _create_server
+        from xhelio_spice.server import _create_server
         server = _create_server()
         # FastMCP stores tools; we can call the underlying functions directly
         # The tool functions are registered as closures, so we need to access them
         # through the server's tool registry
         return server._tool_manager.get_tool(name)
 
-    @patch("heliospice.ephemeris.get_kernel_manager")
-    @patch("heliospice.ephemeris.spice")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.spice")
     def test_single_time_position(self, mock_spice, mock_get_km):
         """Single-time ephemeris returns success with position data."""
         mock_km = MagicMock()
@@ -36,12 +36,12 @@ class TestMCPTools:
         mock_spice.utc2et.return_value = 0.0
         mock_spice.spkpos.return_value = ([1.496e8, 0.0, 0.0], 499.0)
 
-        from heliospice.ephemeris import get_position
+        from xhelio_spice.ephemeris import get_position
         result = get_position("EARTH", "SUN", "2000-01-01T12:00:00")
         assert "r_au" in result
 
-    @patch("heliospice.ephemeris.get_kernel_manager")
-    @patch("heliospice.ephemeris.spice")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.spice")
     def test_single_time_with_velocity(self, mock_spice, mock_get_km):
         """Single-time ephemeris with include_velocity returns state data."""
         mock_km = MagicMock()
@@ -55,7 +55,7 @@ class TestMCPTools:
             [1.496e8, 0.0, 0.0, 0.0, 29.78, 0.0], 499.0
         )
 
-        from heliospice.ephemeris import get_state
+        from xhelio_spice.ephemeris import get_state
         result = get_state("EARTH", "SUN", "2000-01-01T12:00:00")
         assert "vx_km_s" in result
         assert "speed_km_s" in result
@@ -63,7 +63,7 @@ class TestMCPTools:
 
     def test_list_spice_missions_tool(self):
         """list_spice_missions returns mission data."""
-        from heliospice.missions import list_supported_missions
+        from xhelio_spice.missions import list_supported_missions
 
         missions = list_supported_missions()
         assert len(missions) > 0
@@ -72,11 +72,11 @@ class TestMCPTools:
     def test_manage_kernels_unknown_action(self):
         """Server's manage_kernels with unknown action returns error."""
         # Test via creating server and checking the function behavior
-        from heliospice.server import _create_server
+        from xhelio_spice.server import _create_server
         _create_server()  # Just verify it creates without error
 
-    @patch("heliospice.ephemeris.get_kernel_manager")
-    @patch("heliospice.ephemeris.spice")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.spice")
     def test_timeseries_writes_csv(self, mock_spice, mock_get_km):
         """Timeseries mode writes data to CSV and returns metadata only."""
         import tempfile
@@ -95,7 +95,7 @@ class TestMCPTools:
         )
         mock_spice.et2utc.return_value = "2024-01-01T00:00:00.000"
 
-        from heliospice.ephemeris import get_trajectory
+        from xhelio_spice.ephemeris import get_trajectory
         df = get_trajectory(
             target="EARTH", observer="SUN",
             time_start="2024-01-01", time_end="2024-01-01",
@@ -122,12 +122,12 @@ class TestMCPTools:
         finally:
             os.unlink(output_path)
 
-    @patch("heliospice.ephemeris.get_kernel_manager")
-    @patch("heliospice.ephemeris.spice")
+    @patch("xhelio_spice.ephemeris.get_kernel_manager")
+    @patch("xhelio_spice.ephemeris.spice")
     def test_timeseries_with_velocity(self, mock_spice, mock_get_km):
         """Timeseries with include_velocity includes speed computation."""
         import numpy as np
-        from heliospice.ephemeris import get_trajectory
+        from xhelio_spice.ephemeris import get_trajectory
 
         mock_km = MagicMock()
         mock_km.lock = MagicMock()
@@ -154,7 +154,7 @@ class TestMCPTools:
 
     def test_server_has_six_tools(self):
         """Server registers exactly 6 tools after merge."""
-        from heliospice.server import _create_server
+        from xhelio_spice.server import _create_server
         server = _create_server()
         tools = list(server._tool_manager._tools.keys())
         assert len(tools) == 6

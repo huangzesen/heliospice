@@ -3,7 +3,7 @@ SPICE kernel download, caching, and loading.
 
 KernelManager is a thread-safe singleton that handles:
 - Downloading kernels from NAIF on first use
-- Caching kernels in ~/.heliospice/kernels/ (override via HELIOSPICE_KERNEL_DIR)
+- Caching kernels in ~/.xhelio_spice/kernels/ (override via XHELIO_SPICE_KERNEL_DIR)
 - Loading/unloading kernels via spiceypy.furnsh/kclear
 - Tracking loaded kernels to avoid double-loading
 """
@@ -21,7 +21,7 @@ import spiceypy as spice
 
 from .missions import GENERIC_KERNELS, MISSION_KERNELS
 
-logger = logging.getLogger("heliospice")
+logger = logging.getLogger("xhelio_spice")
 
 
 class _LinkExtractor(HTMLParser):
@@ -76,11 +76,11 @@ class KernelManager:
         if kernel_dir is not None:
             self._kernel_dir = Path(kernel_dir)
         else:
-            base = os.environ.get("HELIOSPICE_KERNEL_DIR")
+            base = os.environ.get("XHELIO_SPICE_KERNEL_DIR")
             if base:
                 self._kernel_dir = Path(base)
             else:
-                self._kernel_dir = Path.home() / ".heliospice" / "kernels"
+                self._kernel_dir = Path.home() / ".xhelio_spice" / "kernels"
         self._kernel_dir.mkdir(parents=True, exist_ok=True)
 
     @property
@@ -251,7 +251,7 @@ class KernelManager:
         """
         from .missions import SEGMENTED_MISSIONS
         manifest_file = SEGMENTED_MISSIONS[mission_key]
-        ref = importlib.resources.files("heliospice.manifests").joinpath(manifest_file)
+        ref = importlib.resources.files("xhelio_spice.manifests").joinpath(manifest_file)
         return json.loads(ref.read_text(encoding="utf-8"))
 
     def ensure_segmented_kernels(
@@ -404,7 +404,7 @@ class KernelManager:
                 file_map[fname] = mission_key
         for mission_key, manifest_file in SEGMENTED_MISSIONS.items():
             try:
-                ref = importlib.resources.files("heliospice.manifests").joinpath(manifest_file)
+                ref = importlib.resources.files("xhelio_spice.manifests").joinpath(manifest_file)
                 manifest = json.loads(ref.read_text(encoding="utf-8"))
                 for seg in manifest:
                     file_map[seg["file"]] = mission_key

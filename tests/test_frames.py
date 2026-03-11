@@ -1,4 +1,4 @@
-"""Tests for heliospice.frames — coordinate frame transforms."""
+"""Tests for xhelio_spice.frames — coordinate frame transforms."""
 
 from unittest.mock import MagicMock, patch
 import numpy as np
@@ -7,23 +7,23 @@ import pytest
 
 class TestFrames:
     def test_list_available_frames(self):
-        from heliospice.frames import list_available_frames
+        from xhelio_spice.frames import list_available_frames
         frames = list_available_frames()
         assert "J2000" in frames
         assert "ECLIPJ2000" in frames
         assert "RTN" in frames
 
     def test_resolve_frame_alias(self):
-        from heliospice.frames import _resolve_frame
+        from xhelio_spice.frames import _resolve_frame
         assert _resolve_frame("ECLIPTIC") == "ECLIPJ2000"
         assert _resolve_frame("j2000") == "J2000"
         assert _resolve_frame("RTN") == "RTN"
 
-    @patch("heliospice.frames.get_kernel_manager")
-    @patch("heliospice.frames.spice")
+    @patch("xhelio_spice.frames.get_kernel_manager")
+    @patch("xhelio_spice.frames.spice")
     def test_transform_identity(self, mock_spice, mock_get_km):
         """Transforming to the same frame returns the input."""
-        from heliospice.frames import transform_vector
+        from xhelio_spice.frames import transform_vector
 
         mock_km = MagicMock()
         mock_km.lock = MagicMock()
@@ -35,11 +35,11 @@ class TestFrames:
         result = transform_vector(v, "2024-01-01", "J2000", "J2000")
         np.testing.assert_array_equal(result, v)
 
-    @patch("heliospice.frames.get_kernel_manager")
-    @patch("heliospice.frames.spice")
+    @patch("xhelio_spice.frames.get_kernel_manager")
+    @patch("xhelio_spice.frames.spice")
     def test_transform_spice_native(self, mock_spice, mock_get_km):
         """Standard SPICE frame transform uses pxform."""
-        from heliospice.frames import transform_vector
+        from xhelio_spice.frames import transform_vector
 
         mock_km = MagicMock()
         mock_km.lock = MagicMock()
@@ -59,15 +59,15 @@ class TestFrames:
 
     def test_transform_bad_vector_shape(self):
         """Non-3D vectors raise ValueError."""
-        from heliospice.frames import transform_vector
+        from xhelio_spice.frames import transform_vector
         with pytest.raises(ValueError, match="3-element vector"):
             transform_vector([1.0, 2.0], "2024-01-01", "J2000", "ECLIPJ2000")
 
-    @patch("heliospice.frames.get_kernel_manager")
-    @patch("heliospice.frames.spice")
+    @patch("xhelio_spice.frames.get_kernel_manager")
+    @patch("xhelio_spice.frames.spice")
     def test_rtn_requires_spacecraft(self, mock_spice, mock_get_km):
         """RTN transform without spacecraft raises ValueError."""
-        from heliospice.frames import transform_vector
+        from xhelio_spice.frames import transform_vector
 
         mock_km = MagicMock()
         mock_km.lock = MagicMock()
@@ -82,7 +82,7 @@ class TestFrames:
 
     def test_list_frames_with_descriptions(self):
         """list_frames_with_descriptions returns structured data."""
-        from heliospice.frames import list_frames_with_descriptions
+        from xhelio_spice.frames import list_frames_with_descriptions
         frames = list_frames_with_descriptions()
         assert len(frames) > 0
         for f in frames:

@@ -15,7 +15,7 @@ import spiceypy as spice
 from .missions import resolve_mission, MISSION_NAIF_IDS
 from .kernel_manager import get_kernel_manager
 
-logger = logging.getLogger("heliospice")
+logger = logging.getLogger("xhelio_spice")
 
 # Astronomical unit in km (IAU 2012)
 AU_KM = 149597870.7

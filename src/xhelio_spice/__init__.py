@@ -1,19 +1,19 @@
 """
-heliospice — Spacecraft ephemeris made easy.
+xhelio_spice — Spacecraft ephemeris made easy.
 
 Auto-managed SPICE kernels for heliophysics and planetary missions.
 Wraps SpiceyPy with automatic kernel download, caching, and loading.
 
 Quick start::
 
-    from heliospice import get_position
+    from xhelio_spice import get_position
 
     pos = get_position("PSP", observer="SUN", time="2024-01-15")
     print(f"PSP is {pos['r_au']:.3f} AU from the Sun")
 
 Python API
 ----------
-These functions are available when importing heliospice as a library:
+These functions are available when importing xhelio_spice as a library:
 
   Ephemeris (also exposed via MCP):
     get_position        — Position of a target at a single time

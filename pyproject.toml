@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "heliospice"
+name = "xhelio-spice"
 version = "0.5.0"
 description = "Spacecraft ephemeris made easy — auto-managed SPICE kernels for heliophysics missions"
 readme = "README.md"
@@ -41,15 +41,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/huangzesen/heliospice"
-Repository = "https://github.com/huangzesen/heliospice"
-Issues = "https://github.com/huangzesen/heliospice/issues"
+Homepage = "https://github.com/huangzesen/xhelio-spice"
+Repository = "https://github.com/huangzesen/xhelio-spice"
+Issues = "https://github.com/huangzesen/xhelio-spice/issues"
 
 [project.scripts]
-heliospice-mcp = "heliospice.server:main"
+xhelio-spice-mcp = "xhelio_spice.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/heliospice"]
+packages = ["src/xhelio_spice"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

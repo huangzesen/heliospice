@@ -5,12 +5,12 @@ Exposes SPICE position/trajectory/transform capabilities as MCP tools
 over stdio transport. Any MCP-compatible client (Claude Desktop, Claude Code,
 Cursor, etc.) can connect and query spacecraft positions.
 
-This server is lightweight — no LLM needed. It wraps heliospice directly.
+This server is lightweight — no LLM needed. It wraps xhelio_spice directly.
 
 Usage:
-    heliospice-mcp                  # Via CLI entrypoint
-    python -m heliospice.server     # Via module
-    heliospice-mcp -v               # With verbose logging
+    xhelio-spice-mcp                # Via CLI entrypoint
+    python -m xhelio_spice.server   # Via module
+    xhelio-spice-mcp -v             # With verbose logging
 """
 
 import argparse
@@ -27,7 +27,7 @@ def _create_server() -> "FastMCP":
     if FastMCP is None:
         raise ImportError(
             "MCP support requires the 'mcp' package. "
-            "Install it with: pip install heliospice[mcp]"
+            "Install it with: pip install xhelio-spice[mcp]"
         )
 
     def _cache_size_mb() -> float:
@@ -74,7 +74,7 @@ def _create_server() -> "FastMCP":
             "- Time format: ISO 8601 (e.g., '2024-01-15T12:00:00' or '2024-01-15').\n"
             "- Step for timeseries: '1m', '1h', '6h', '1d' (default '1h').\n"
             "- Timeseries data is written to CSV at the caller-specified output_file path. The MCP response contains only metadata.\n"
-            "- Kernels auto-download on first query; cache location: ~/.heliospice/kernels/ (configurable via HELIOSPICE_KERNEL_DIR)."
+            "- Kernels auto-download on first query; cache location: ~/.xhelio_spice/kernels/ (configurable via XHELIO_SPICE_KERNEL_DIR)."
         ),
     )
 
@@ -543,7 +543,7 @@ def _create_server() -> "FastMCP":
 def main():
     """CLI entrypoint for the SPICE MCP server."""
     parser = argparse.ArgumentParser(
-        description="heliospice MCP server for spacecraft ephemeris"
+        description="xhelio-spice MCP server for spacecraft ephemeris"
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"

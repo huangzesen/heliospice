@@ -1,16 +1,16 @@
 ---
-name: heliospice
+name: xhelio-spice
 description: Query positions of spacecraft, planets, moons, and asteroids in the solar system
 ---
 
-# Heliospice
+# XHelio-SPICE
 
 Query spacecraft and planetary ephemeris data using SPICE kernels.
 
 ## Setup
 
 ```bash
-pip install heliospice
+pip install xhelio-spice
 ```
 
 ## What You Can Query

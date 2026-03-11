@@ -15,7 +15,7 @@ import spiceypy as spice
 from .kernel_manager import get_kernel_manager
 from .missions import resolve_mission, MISSION_KERNELS, SEGMENTED_MISSIONS
 
-logger = logging.getLogger("heliospice")
+logger = logging.getLogger("xhelio_spice")
 
 
 # ---------------------------------------------------------------------------
