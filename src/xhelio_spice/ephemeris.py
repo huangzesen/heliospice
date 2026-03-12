@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import spiceypy as spice
 
-from .missions import resolve_mission, MISSION_NAIF_IDS
+from .missions import resolve_mission, get_spice_body_id
 from .kernel_manager import get_kernel_manager
 
 logger = logging.getLogger("xhelio_spice")
@@ -56,19 +56,17 @@ def rtn_matrix_from_position(pos_j2000: np.ndarray) -> np.ndarray:
 
 
 def _resolve_body(name: str) -> tuple[int, str]:
-    """Resolve a body name to (NAIF ID, canonical key).
+    """Resolve a body name to (SPICE body ID, canonical key).
 
     Tries mission registry first, then falls back to SPICE bodn2c.
+    Returns the body ID that the SPK kernel actually uses (which may
+    differ from the 'official' NAIF assignment for some missions).
     """
     try:
-        return resolve_mission(name)
+        _, key = resolve_mission(name)
+        return get_spice_body_id(key), key
     except KeyError:
         pass
-
-    # Try SPICE built-in name resolution
-    key = name.strip().upper().replace("-", "_")
-    if key in MISSION_NAIF_IDS:
-        return MISSION_NAIF_IDS[key], key
 
     # Let SPICE try
     km = get_kernel_manager()
@@ -160,7 +158,7 @@ def get_position(
     """Get the position of a target relative to an observer at a single time.
 
     Args:
-        target: Target body name (e.g., "PSP", "Earth", "ACE").
+        target: Target body name (e.g., "PSP", "Earth", "Cassini").
         observer: Observer body name (default: "SUN").
         time: UTC time as ISO string or datetime.
         frame: Reference frame (default: "ECLIPJ2000").

@@ -54,13 +54,21 @@ def _create_server() -> "FastMCP":
             "(SPK for position/velocity, PCK for planetary constants, LSK for leap seconds) to compute "
             "positions of bodies at any time. This server wraps the Python 'SpiceyPy' library with "
             "automatic kernel management — kernels are downloaded on-demand from NAIF and cached locally.\n\n"
-            "=== Available Spacecraft (43 total) ===\n"
-            "Heliophysics: PSP (Parker Solar Probe), SOLO (Solar Orbiter), SOHO, IBEX, STEREO-A/B, "
-            "Helios 1/2, Ulysses, ACE*, Wind*, DSCOVR*, Van Allen Probes (RBSP_A/B), THEMIS A-E (ARTEMIS)\n"
-            "Planetary/Deep-Space: Cassini, Juno, Voyager 1/2, MAVEN, MRO, Mars 2020, New Horizons, Galileo, "
-            "Pioneer 10/11, MESSENGER, Dawn, Lucy, Europa Clipper, Psyche, JUICE, BepiColombo, "
-            "Venus Express, Pioneer Venus, InSight, LRO, Lunar Prospector, MGS\n"
-            "* ACE, Wind, DSCOVR have NAIF IDs but no public SPK kernels available.\n\n"
+            "=== Available Spacecraft (87 total) ===\n"
+            "Heliophysics: PSP, Solar Orbiter, SOHO, IBEX, STEREO-A/B, Helios 1/2, Ulysses, "
+            "Pioneer 6/8, Van Allen Probes A/B, THEMIS A-E, INTEGRAL, IUE\n"
+            "Mars: MAVEN, MRO*, Mars 2020*, Mars Odyssey*, MSL/Curiosity, Mars Express, MGS*, "
+            "ExoMars TGO*, Phoenix, Viking 1/2, InSight, MER Spirit/Opportunity\n"
+            "Venus: Venus Express, Pioneer Venus, Magellan*, Akatsuki*\n"
+            "Moon: LRO*, Lunar Prospector*, Clementine, LADEE, SMART-1, GRAIL*, Chandrayaan-1*, "
+            "Lunar Orbiter 1-5\n"
+            "Outer: Cassini*, Juno, Galileo, Europa Clipper\n"
+            "Other: MESSENGER, Dawn, BepiColombo, NEAR, Rosetta, Deep Impact, EPOXI, Hayabusa, "
+            "OSIRIS-REx, Deep Space 1, Stardust*, New Horizons, Lucy, Psyche, JUICE, Hera, "
+            "Giotto, Mariner 9/10, Vega 1, Genesis, CONTOUR\n"
+            "Deep-space: Voyager 1/2, Pioneer 10/11\n"
+            "Observatories: JWST, Hubble, Chandra, Spitzer, Gaia, Euclid\n"
+            "* = segmented kernels (only segments for your time range are downloaded)\n\n"
             "=== Available Bodies (observers/targets) ===\n"
             "Sun, Earth, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, "
             "Solar System Barycenter (SSB), and planetary barycenters.\n\n"
@@ -251,7 +259,7 @@ def _create_server() -> "FastMCP":
 
         Args:
             target1: First body (e.g., "PSP", "Earth")
-            target2: Second body (e.g., "SUN", "ACE")
+            target2: Second body (e.g., "SUN", "Earth")
             time_start: Start time (ISO 8601)
             time_end: End time (ISO 8601)
             step: Time step (e.g., "1h", "6h", "1d")
@@ -265,7 +273,7 @@ def _create_server() -> "FastMCP":
 
         Examples:
             - compute_distance("PSP", "SUN", "2024-01-01", "2024-01-31", "1h")
-            - compute_distance("ACE", "Earth", "2024-06-01", "2024-06-30", "6h")
+            - compute_distance("PSP", "Earth", "2024-06-01", "2024-06-30", "6h")
         """
         from .ephemeris import get_trajectory
 
@@ -480,7 +488,18 @@ def _create_server() -> "FastMCP":
             from .missions import resolve_mission
 
             try:
+                from .missions import SEGMENTED_MISSIONS
                 _, mission_key = resolve_mission(mission)
+                if mission_key in SEGMENTED_MISSIONS:
+                    return {
+                        "status": "error",
+                        "error_type": "SegmentedMission",
+                        "message": (
+                            f"{mission_key} uses segmented kernels. "
+                            f"Segments are loaded automatically when you call "
+                            f"get_ephemeris with a time range. No manual load needed."
+                        ),
+                    }
                 km.ensure_mission_kernels(mission_key)
                 return {
                     "status": "success",

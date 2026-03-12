@@ -13,7 +13,7 @@ import numpy as np
 import spiceypy as spice
 
 from .kernel_manager import get_kernel_manager
-from .missions import resolve_mission, MISSION_KERNELS, SEGMENTED_MISSIONS
+from .missions import resolve_mission, get_spice_body_id, MISSION_KERNELS, SEGMENTED_MISSIONS
 
 logger = logging.getLogger("xhelio_spice")
 
@@ -93,7 +93,7 @@ FRAME_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "full_name": "Geocentric Solar Ecliptic",
         "description": "Earth-centered frame. X-axis toward Sun, Z-axis toward ecliptic north. "
                        "Rotates with the Sun-Earth line.",
-        "use_when": "Near-Earth spacecraft (ACE, Wind, DSCOVR, MMS). Magnetospheric physics, "
+        "use_when": "Near-Earth spacecraft (THEMIS, Van Allen Probes). Magnetospheric physics, "
                     "bow shock and magnetopause studies.",
     },
     "GEI": {
@@ -107,7 +107,7 @@ FRAME_DESCRIPTIONS: dict[str, dict[str, str]] = {
                        "the direction of orbital motion (perpendicular to R in orbital plane), "
                        "N completes the right-handed system.",
         "use_when": "Solar wind analysis at a spacecraft. Magnetic field and plasma velocity "
-                    "decomposition (e.g., PSP, Solar Orbiter, ACE). Requires spacecraft parameter.",
+                    "decomposition (e.g., PSP, Solar Orbiter). Requires spacecraft parameter.",
     },
 }
 
@@ -153,7 +153,8 @@ def _compute_rtn_matrix(spacecraft: str, time_et: float) -> np.ndarray:
     from .ephemeris import rtn_matrix_from_position
 
     try:
-        sc_id, sc_key = resolve_mission(spacecraft)
+        _, sc_key = resolve_mission(spacecraft)
+        sc_id = get_spice_body_id(sc_key)
     except KeyError:
         sc_id = int(spacecraft)
         sc_key = spacecraft

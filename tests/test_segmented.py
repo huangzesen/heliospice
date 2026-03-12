@@ -38,8 +38,26 @@ class TestSegmentedMissions:
 
     def test_has_kernels_none(self):
         from xhelio_spice.missions import has_kernels
-        assert has_kernels("ACE") is False
-        assert has_kernels("WIND") is False
+        assert has_kernels("NONEXISTENT") is False
+
+    def test_new_segmented_missions_registered(self):
+        from xhelio_spice.missions import SEGMENTED_MISSIONS
+        assert SEGMENTED_MISSIONS["MARS_ODYSSEY"] == "mars_odyssey.json"
+        assert SEGMENTED_MISSIONS["STARDUST"] == "stardust.json"
+        assert SEGMENTED_MISSIONS["AKATSUKI"] == "akatsuki.json"
+        assert SEGMENTED_MISSIONS["GRAIL_A"] == "grail.json"
+        assert SEGMENTED_MISSIONS["GRAIL_B"] == "grail.json"
+        assert SEGMENTED_MISSIONS["MAGELLAN"] == "magellan.json"
+        assert SEGMENTED_MISSIONS["EXOMARS_TGO"] == "exomars_tgo.json"
+        assert SEGMENTED_MISSIONS["CHANDRAYAAN_1"] == "chandrayaan1.json"
+
+    def test_has_kernels_new_segmented(self):
+        from xhelio_spice.missions import has_kernels
+        for key in [
+            "MARS_ODYSSEY", "STARDUST", "AKATSUKI", "GRAIL_A", "GRAIL_B",
+            "MAGELLAN", "EXOMARS_TGO", "CHANDRAYAAN_1",
+        ]:
+            assert has_kernels(key) is True, f"{key} should have kernels"
 
     def test_list_supported_missions_includes_segmented(self):
         from xhelio_spice.missions import list_supported_missions

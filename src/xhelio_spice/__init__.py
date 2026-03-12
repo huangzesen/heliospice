@@ -48,29 +48,50 @@ The MCP server exposes 6 tools. Some combine multiple Python functions:
 Note: ``compute_distance`` has no direct Python API equivalent; it uses
 ``get_trajectory`` internally to compute distances between two bodies.
 
-Supported missions (43 spacecraft):
+Supported missions (87 spacecraft):
 
   Heliophysics:
     PSP, Solar Orbiter, SOHO, IBEX, STEREO-A, STEREO-B,
-    Helios 1, Helios 2, Ulysses,
-    Van Allen Probes A/B, THEMIS A/B/C/D/E
+    Helios 1, Helios 2, Ulysses, Pioneer 6, Pioneer 8,
+    Van Allen Probes A/B, THEMIS A/B/C/D/E,
+    INTEGRAL, IUE
 
-  Planetary / deep-space:
-    Juno, Voyager 1, Voyager 2, MAVEN, New Horizons,
-    Galileo, Pioneer 10, Pioneer 11, MESSENGER, Dawn,
-    Lucy, Europa Clipper, Psyche, JUICE, BepiColombo,
-    Venus Express, Pioneer Venus, InSight,
-    Cassini*, MRO*, Mars 2020*, LRO*, Lunar Prospector*, MGS*
+  Planetary — Mars:
+    MAVEN, MRO*, Mars 2020*, Mars Odyssey*, MSL/Curiosity,
+    Mars Express, Mars Global Surveyor*, ExoMars TGO*,
+    Phoenix, Viking 1, Viking 2, InSight,
+    MER Spirit, MER Opportunity
 
-  No SPK kernels (NAIF ID only):
-    ACE, Wind, DSCOVR
+  Planetary — Venus:
+    Venus Express, Pioneer Venus, Magellan*, Akatsuki*
+
+  Planetary — Moon:
+    LRO*, Lunar Prospector*, Clementine, LADEE, SMART-1,
+    GRAIL A/B*, Chandrayaan-1*,
+    Lunar Orbiter 1/2/3/4/5
+
+  Planetary — Jupiter/Saturn:
+    Cassini*, Juno, Galileo, Europa Clipper
+
+  Planetary — other:
+    MESSENGER, Dawn, BepiColombo, NEAR Shoemaker,
+    Rosetta, Deep Impact, EPOXI, Hayabusa, OSIRIS-REx,
+    Deep Space 1, Stardust*, New Horizons, Lucy, Psyche, JUICE,
+    Hera, Giotto, Mariner 9, Mariner 10, Vega 1,
+    Genesis, CONTOUR
+
+  Deep-space:
+    Voyager 1, Voyager 2, Pioneer 10, Pioneer 11
+
+  Observatories:
+    JWST, Hubble, Chandra, Spitzer, Gaia, Euclid
 
   * = segmented kernels (only segments for your time range are downloaded)
 
 Use ``list_supported_missions()`` for programmatic access.
 """
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 
 from .ephemeris import get_position, get_trajectory, get_state
 from .frames import (
