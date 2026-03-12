@@ -80,6 +80,54 @@ class TestFrames:
         with pytest.raises(ValueError, match="spacecraft.*required"):
             transform_vector([1.0, 0.0, 0.0], "2024-01-01", "J2000", "RTN")
 
+    @patch("xhelio_spice.frames.get_kernel_manager")
+    @patch("xhelio_spice.frames.spice")
+    def test_non_native_frame_to_rtn_uses_pxform(self, mock_spice, mock_get_km):
+        """HCI → RTN must use pxform(HCI, J2000) before applying RTN matrix."""
+        from xhelio_spice.frames import transform_vector
+
+        mock_km = MagicMock()
+        mock_km.lock = MagicMock()
+        mock_km.lock.__enter__ = MagicMock(return_value=None)
+        mock_km.lock.__exit__ = MagicMock(return_value=False)
+        mock_get_km.return_value = mock_km
+
+        mock_spice.utc2et.return_value = 0.0
+        mock_spice.pxform.return_value = np.eye(3)
+        mock_spice.spkpos.return_value = ([1.496e8, 0.0, 0.0], 499.0)
+
+        v = np.array([1.0, 0.0, 0.0])
+        result = transform_vector(
+            v, "2024-01-01", "HCI", "RTN", spacecraft="PSP"
+        )
+
+        mock_spice.pxform.assert_called_once_with("HCI", "J2000", 0.0)
+        assert result.shape == (3,)
+
+    @patch("xhelio_spice.frames.get_kernel_manager")
+    @patch("xhelio_spice.frames.spice")
+    def test_rtn_to_non_native_frame_uses_pxform(self, mock_spice, mock_get_km):
+        """RTN → GSE must use pxform(J2000, GSE) after RTN inverse."""
+        from xhelio_spice.frames import transform_vector
+
+        mock_km = MagicMock()
+        mock_km.lock = MagicMock()
+        mock_km.lock.__enter__ = MagicMock(return_value=None)
+        mock_km.lock.__exit__ = MagicMock(return_value=False)
+        mock_get_km.return_value = mock_km
+
+        mock_spice.utc2et.return_value = 0.0
+        mock_spice.pxform.return_value = np.eye(3)
+        mock_spice.spkpos.return_value = ([1.496e8, 0.0, 0.0], 499.0)
+
+        v = np.array([1.0, 0.0, 0.0])
+        result = transform_vector(
+            v, "2024-01-01", "RTN", "GSE", spacecraft="PSP"
+        )
+
+        mock_spice.pxform.assert_called_once_with("J2000", "GSE", 0.0)
+        assert result.shape == (3,)
+
     def test_list_frames_with_descriptions(self):
         """list_frames_with_descriptions returns structured data."""
         from xhelio_spice.frames import list_frames_with_descriptions

@@ -115,7 +115,7 @@ FRAME_DESCRIPTIONS: dict[str, dict[str, str]] = {
 _MANUAL_FRAMES = {"RTN"}
 
 # Frames that are standard SPICE and can use pxform directly
-_SPICE_NATIVE_FRAMES = {"J2000", "ECLIPJ2000", "ECLIPB1950"}
+
 
 
 def _resolve_frame(name: str) -> str:
@@ -257,21 +257,20 @@ def transform_vector(
         if src == "RTN":
             # RTN -> J2000 -> dst
             v_j2000 = rtn_mat.T @ v  # RTN -> J2000 (inverse = transpose)
-            if dst in _SPICE_NATIVE_FRAMES:
-                with km.lock:
-                    mat = spice.pxform("J2000", dst, et)
-                return np.array(mat) @ v_j2000
-            else:
+            if dst == "J2000":
                 return v_j2000
+            with km.lock:
+                mat = spice.pxform("J2000", dst, et)
+            return np.array(mat) @ v_j2000
 
         if dst == "RTN":
             # src -> J2000 -> RTN
-            if src in _SPICE_NATIVE_FRAMES:
+            if src == "J2000":
+                v_j2000 = v
+            else:
                 with km.lock:
                     mat = spice.pxform(src, "J2000", et)
                 v_j2000 = np.array(mat) @ v
-            else:
-                v_j2000 = v  # assume already J2000-compatible
             return rtn_mat @ v_j2000
 
     # Standard SPICE frame-to-frame
