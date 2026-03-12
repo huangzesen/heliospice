@@ -16,7 +16,13 @@
       "transport": {
         "type": "stdio"
       },
-      "environmentVariables": []
+      "environmentVariables": [
+        {
+          "name": "XHELIO_SPICE_KERNEL_DIR",
+          "description": "Override the default kernel cache directory (~/.xhelio_spice/kernels/)",
+          "required": false
+        }
+      ]
     }
   ]
 }
