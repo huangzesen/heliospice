@@ -36,6 +36,14 @@ def _create_server() -> "FastMCP":
 
         return round(get_kernel_manager().get_cache_size_bytes() / (1024 * 1024), 2)
 
+    def _error_response(e: Exception) -> dict:
+        """Build a standardized error response dict."""
+        return {
+            "status": "error",
+            "error_type": type(e).__name__,
+            "message": str(e),
+        }
+
     mcp = FastMCP(
         "spice-ephemeris",
         instructions=(
@@ -227,7 +235,7 @@ def _create_server() -> "FastMCP":
             }
 
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return _error_response(e)
 
     @mcp.tool()
     def compute_distance(
@@ -302,7 +310,7 @@ def _create_server() -> "FastMCP":
             return result
 
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return _error_response(e)
 
     @mcp.tool()
     def transform_coordinates(
@@ -352,7 +360,7 @@ def _create_server() -> "FastMCP":
                 "magnitude": round(float(np.linalg.norm(result_vec)), 6),
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return _error_response(e)
 
     @mcp.tool()
     def list_spice_missions() -> dict:
@@ -475,7 +483,7 @@ def _create_server() -> "FastMCP":
                     "loaded": km.list_loaded(),
                 }
             except Exception as e:
-                return {"status": "error", "message": str(e)}
+                return _error_response(e)
 
         elif action == "unload_all":
             km.unload_all()
@@ -501,7 +509,7 @@ def _create_server() -> "FastMCP":
                 result = km.delete_mission_cache(mission_key)
                 return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
             except Exception as e:
-                return {"status": "error", "message": str(e)}
+                return _error_response(e)
 
         elif action == "check_remote":
             if not mission:
@@ -520,7 +528,7 @@ def _create_server() -> "FastMCP":
                     **result,
                 }
             except Exception as e:
-                return {"status": "error", "message": str(e)}
+                return _error_response(e)
 
         elif action == "purge":
             result = km.purge_cache()
