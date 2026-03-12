@@ -31,7 +31,7 @@ _SUN_NORTH_J2000 = np.array([
 ])
 
 
-def _rtn_matrix(pos_j2000: np.ndarray) -> np.ndarray:
+def rtn_matrix_from_position(pos_j2000: np.ndarray) -> np.ndarray:
     """Build the J2000→RTN rotation matrix from a Sun-centered position.
 
     Args:
@@ -185,7 +185,7 @@ def get_position(
         # Get target position from Sun for RTN matrix
         with km.lock:
             sun_pos, _ = spice.spkpos(str(target_id), et, "J2000", "NONE", "10")
-        rtn_mat = _rtn_matrix(np.asarray(sun_pos, dtype=float))
+        rtn_mat = rtn_matrix_from_position(np.asarray(sun_pos, dtype=float))
         pos = rtn_mat @ pos
 
     x, y, z = float(pos[0]), float(pos[1]), float(pos[2])
@@ -244,7 +244,7 @@ def get_state(
     if is_rtn:
         with km.lock:
             sun_pos, _ = spice.spkpos(str(target_id), et, "J2000", "NONE", "10")
-        rtn_mat = _rtn_matrix(np.asarray(sun_pos, dtype=float))
+        rtn_mat = rtn_matrix_from_position(np.asarray(sun_pos, dtype=float))
         pos = rtn_mat @ pos
         vel = rtn_mat @ vel
 
@@ -341,7 +341,7 @@ def get_trajectory(
 
             if is_rtn:
                 sun_pos, _ = spice.spkpos(str(target_id), et, "J2000", "NONE", "10")
-                rtn_mat = _rtn_matrix(np.asarray(sun_pos, dtype=float))
+                rtn_mat = rtn_matrix_from_position(np.asarray(sun_pos, dtype=float))
                 positions[i] = rtn_mat @ positions[i]
                 if include_velocity:
                     velocities[i] = rtn_mat @ velocities[i]

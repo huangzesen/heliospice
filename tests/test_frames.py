@@ -128,6 +128,14 @@ class TestFrames:
         mock_spice.pxform.assert_called_once_with("J2000", "GSE", 0.0)
         assert result.shape == (3,)
 
+    def test_rtn_matrix_implementations_agree(self):
+        """ephemeris._rtn_matrix produces valid orthonormal rotation matrix."""
+        from xhelio_spice.ephemeris import rtn_matrix_from_position
+        pos = np.array([1.496e8, 0.0, 0.0])
+        mat = rtn_matrix_from_position(pos)
+        assert mat.shape == (3, 3)
+        np.testing.assert_allclose(mat @ mat.T, np.eye(3), atol=1e-12)
+
     def test_list_frames_with_descriptions(self):
         """list_frames_with_descriptions returns structured data."""
         from xhelio_spice.frames import list_frames_with_descriptions

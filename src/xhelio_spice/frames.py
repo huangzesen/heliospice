@@ -140,13 +140,8 @@ def _resolve_frame(name: str) -> str:
 def _compute_rtn_matrix(spacecraft: str, time_et: float) -> np.ndarray:
     """Compute the RTN rotation matrix for a spacecraft at a given time.
 
-    RTN is defined relative to the Sun:
-    - R (radial): unit vector from Sun to spacecraft
-    - T (tangential): cross(Sun_north, R), normalized
-    - N (normal): cross(R, T)
-
-    The returned matrix transforms from J2000 to RTN:
-        v_rtn = M @ v_j2000
+    Uses the shared rtn_matrix_from_position() from ephemeris module
+    after resolving the spacecraft position from Sun in J2000.
 
     Args:
         spacecraft: Spacecraft name or NAIF ID string.
@@ -155,6 +150,8 @@ def _compute_rtn_matrix(spacecraft: str, time_et: float) -> np.ndarray:
     Returns:
         3x3 rotation matrix (J2000 -> RTN).
     """
+    from .ephemeris import rtn_matrix_from_position
+
     try:
         sc_id, sc_key = resolve_mission(spacecraft)
     except KeyError:
@@ -167,42 +164,15 @@ def _compute_rtn_matrix(spacecraft: str, time_et: float) -> np.ndarray:
         km.ensure_mission_kernels(sc_key)
     elif sc_key in SEGMENTED_MISSIONS:
         from datetime import date
-        # LSK already loaded — convert ET to UTC date for segment lookup
         with km.lock:
             utc_str = spice.et2utc(time_et, "ISOC", 0)
         t_date = date.fromisoformat(utc_str[:10])
         km.ensure_segmented_kernels(sc_key, t_date, t_date)
 
     with km.lock:
-        # Spacecraft position relative to Sun in J2000
         pos_j2000, _ = spice.spkpos(str(sc_id), time_et, "J2000", "NONE", "10")
 
-    pos = np.array(pos_j2000, dtype=float)
-    r_hat = pos / np.linalg.norm(pos)
-
-    # Sun's north pole in J2000 (approximately Z-axis of ecliptic + obliquity)
-    # Use IAU_SUN pole: RA=286.13 deg, Dec=63.87 deg (J2000)
-    ra_rad = np.radians(286.13)
-    dec_rad = np.radians(63.87)
-    sun_north = np.array([
-        np.cos(dec_rad) * np.cos(ra_rad),
-        np.cos(dec_rad) * np.sin(ra_rad),
-        np.sin(dec_rad),
-    ])
-
-    t_hat = np.cross(sun_north, r_hat)
-    t_norm = np.linalg.norm(t_hat)
-    if t_norm < 1e-10:
-        # Degenerate case: spacecraft along Sun's rotation axis
-        t_hat = np.array([0.0, 1.0, 0.0])
-    else:
-        t_hat = t_hat / t_norm
-
-    n_hat = np.cross(r_hat, t_hat)
-    n_hat = n_hat / np.linalg.norm(n_hat)
-
-    # Rotation matrix: rows are the RTN basis vectors in J2000
-    return np.array([r_hat, t_hat, n_hat])
+    return rtn_matrix_from_position(np.asarray(pos_j2000, dtype=float))
 
 
 def transform_vector(
