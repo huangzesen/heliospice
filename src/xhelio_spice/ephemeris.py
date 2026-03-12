@@ -137,15 +137,18 @@ def _parse_step(step: str) -> float:
     """Parse a step string like '1h', '30m', '1d' into seconds."""
     step = step.strip().lower()
     if step.endswith("d"):
-        return float(step[:-1]) * 86400
+        result = float(step[:-1]) * 86400
     elif step.endswith("h"):
-        return float(step[:-1]) * 3600
+        result = float(step[:-1]) * 3600
     elif step.endswith("m"):
-        return float(step[:-1]) * 60
+        result = float(step[:-1]) * 60
     elif step.endswith("s"):
-        return float(step[:-1])
+        result = float(step[:-1])
     else:
-        return float(step)  # assume seconds
+        result = float(step)  # assume seconds
+    if result <= 0:
+        raise ValueError(f"Time step must be positive, got '{step}' ({result}s)")
+    return result
 
 
 def get_position(

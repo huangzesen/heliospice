@@ -271,3 +271,10 @@ class TestEphemeris:
         assert "vx_km_s" in df.columns
         assert "vy_km_s" in df.columns
         assert "vz_km_s" in df.columns
+
+
+def test_parse_step_zero_raises():
+    """Zero step size raises ValueError."""
+    from xhelio_spice.ephemeris import _parse_step
+    with pytest.raises(ValueError, match="must be positive"):
+        _parse_step("0h")
