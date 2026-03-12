@@ -387,6 +387,7 @@ def _create_server() -> "FastMCP":
 
         return {
             "status": "success",
+            "cache_size_mb": _cache_size_mb(),
             "mission_count": len(missions),
             "missions": missions,
         }
@@ -408,6 +409,7 @@ def _create_server() -> "FastMCP":
         frames = list_frames_with_descriptions()
         return {
             "status": "success",
+            "cache_size_mb": _cache_size_mb(),
             "frame_count": len(frames),
             "frames": frames,
         }
@@ -450,6 +452,7 @@ def _create_server() -> "FastMCP":
             cache = km.get_cache_info()
             return {
                 "status": "success",
+                "cache_size_mb": _cache_size_mb(),
                 "loaded_kernels": loaded,
                 "loaded_count": len(loaded),
                 "cache": cache,
@@ -468,6 +471,7 @@ def _create_server() -> "FastMCP":
                 km.ensure_mission_kernels(mission_key)
                 return {
                     "status": "success",
+                    "cache_size_mb": _cache_size_mb(),
                     "message": f"Kernels downloaded and loaded for {mission_key}",
                     "loaded": km.list_loaded(),
                 }
@@ -487,6 +491,7 @@ def _create_server() -> "FastMCP":
                 km.ensure_mission_kernels(mission_key)
                 return {
                     "status": "success",
+                    "cache_size_mb": _cache_size_mb(),
                     "message": f"Kernels loaded for {mission_key}",
                     "loaded": km.list_loaded(),
                 }
@@ -495,12 +500,12 @@ def _create_server() -> "FastMCP":
 
         elif action == "unload_all":
             km.unload_all()
-            return {"status": "success", "message": "All kernels unloaded"}
+            return {"status": "success", "cache_size_mb": _cache_size_mb(), "message": "All kernels unloaded"}
 
         elif action == "delete":
             if filenames:
                 result = km.delete_cached_files(filenames)
-                return {"status": "success", **result}
+                return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
             if not mission:
                 return {
                     "status": "error",
@@ -515,7 +520,7 @@ def _create_server() -> "FastMCP":
                 else:
                     _, mission_key = resolve_mission(mission)
                 result = km.delete_mission_cache(mission_key)
-                return {"status": "success", **result}
+                return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
             except Exception as e:
                 return {"status": "error", "message": str(e)}
 
@@ -540,7 +545,7 @@ def _create_server() -> "FastMCP":
 
         elif action == "purge":
             result = km.purge_cache()
-            return {"status": "success", **result}
+            return {"status": "success", "cache_size_mb": _cache_size_mb(), **result}
 
         else:
             return {

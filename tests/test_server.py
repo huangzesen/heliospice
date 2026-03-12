@@ -181,3 +181,50 @@ class TestGetEphemerisValidation:
         )
         assert result["status"] == "error"
         assert "parent directory" in result["message"].lower() or "does not exist" in result["message"].lower()
+
+
+@pytest.mark.skipif(not _HAS_MCP, reason="mcp package not installed")
+class TestCacheSizeInResponses:
+    """All MCP tools must return cache_size_mb in success responses."""
+
+    @patch("xhelio_spice.kernel_manager.get_kernel_manager")
+    def test_list_spice_missions_has_cache_size(self, mock_get_km):
+        from xhelio_spice.server import _create_server
+        mock_km = MagicMock()
+        mock_km.get_cache_size_bytes.return_value = 1024 * 1024
+        mock_km.list_loaded.return_value = []
+        mock_get_km.return_value = mock_km
+
+        server = _create_server()
+        tool = server._tool_manager.get_tool("list_spice_missions")
+        result = tool.fn()
+        assert "cache_size_mb" in result
+
+    @patch("xhelio_spice.kernel_manager.get_kernel_manager")
+    def test_list_coordinate_frames_has_cache_size(self, mock_get_km):
+        from xhelio_spice.server import _create_server
+        mock_km = MagicMock()
+        mock_km.get_cache_size_bytes.return_value = 1024 * 1024
+        mock_get_km.return_value = mock_km
+
+        server = _create_server()
+        tool = server._tool_manager.get_tool("list_coordinate_frames")
+        result = tool.fn()
+        assert "cache_size_mb" in result
+
+    @patch("xhelio_spice.kernel_manager.get_kernel_manager")
+    def test_manage_kernels_status_has_cache_size(self, mock_get_km):
+        from xhelio_spice.server import _create_server
+        mock_km = MagicMock()
+        mock_km.get_cache_size_bytes.return_value = 1024 * 1024
+        mock_km.list_loaded.return_value = []
+        mock_km.get_cache_info.return_value = {
+            "kernel_dir": "/tmp", "total_size_mb": 1.0,
+            "file_count": 0, "missions": {},
+        }
+        mock_get_km.return_value = mock_km
+
+        server = _create_server()
+        tool = server._tool_manager.get_tool("manage_kernels")
+        result = tool.fn(action="status")
+        assert "cache_size_mb" in result
