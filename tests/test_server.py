@@ -163,3 +163,21 @@ class TestMCPTools:
         assert "get_spacecraft_position" not in tools
         assert "get_spacecraft_trajectory" not in tools
         assert "get_spacecraft_velocity" not in tools
+
+
+@pytest.mark.skipif(not _HAS_MCP, reason="mcp package not installed")
+class TestGetEphemerisValidation:
+    """Test input validation for get_ephemeris MCP tool."""
+
+    def test_output_file_nonexistent_parent(self):
+        """output_file with nonexistent parent directory returns error."""
+        from xhelio_spice.server import _create_server
+        server = _create_server()
+        tool = server._tool_manager.get_tool("get_ephemeris")
+        result = tool.fn(
+            target="EARTH", time="2024-01-01", frame="ECLIPJ2000",
+            observer="SUN", output_file="/nonexistent/dir/out.csv",
+            time_end="2024-01-02", step="1d",
+        )
+        assert result["status"] == "error"
+        assert "parent directory" in result["message"].lower() or "does not exist" in result["message"].lower()

@@ -141,9 +141,24 @@ def _create_server() -> "FastMCP":
                 }
 
             # --- Timeseries mode ---
+            import os
+
+            # Validate output_file
+            if not output_file:
+                return {
+                    "status": "error",
+                    "message": "output_file is required for timeseries queries (when time_end is provided).",
+                }
+            output_path = os.path.abspath(output_file)
+            parent_dir = os.path.dirname(output_path)
+            if not os.path.isdir(parent_dir):
+                return {
+                    "status": "error",
+                    "message": f"Parent directory does not exist: {parent_dir}",
+                }
+
             from .ephemeris import get_trajectory
             import numpy as np
-            import os
 
             df = get_trajectory(
                 target=target,
@@ -162,7 +177,6 @@ def _create_server() -> "FastMCP":
             df["speed_km_s"] = speed
 
             # Write CSV
-            output_path = os.path.abspath(output_file)
             df.index.name = "time"
             df.to_csv(output_path)
             output_size = os.path.getsize(output_path)
