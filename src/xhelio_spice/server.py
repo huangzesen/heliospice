@@ -67,7 +67,7 @@ def _create_server() -> "FastMCP":
             "3. transform_coordinates — Transform 3D vectors between frames (e.g., RTN to J2000). RTN requires spacecraft name.\n"
             "4. list_spice_missions — List all supported missions with kernel status.\n"
             "5. list_coordinate_frames — Show all frames with descriptions and usage guidance.\n"
-            "6. manage_kernels — Check status, download/load kernels, delete cache, or purge all.\n\n"
+            "6. manage_kernels — Check status, load kernels, delete cache, or purge all.\n\n"
             "=== Usage Notes ===\n"
             "- frame is required for get_ephemeris — use list_coordinate_frames first to choose.\n"
             "- Observer defaults to SUN; use EARTH for geocentric, or any planet.\n"
@@ -420,24 +420,23 @@ def _create_server() -> "FastMCP":
         mission: str = "",
         filenames: list[str] | None = None,
     ) -> dict:
-        """Manage SPICE kernels: check status, download, load, clean cache, check remote, or purge.
+        """Manage SPICE kernels: check status, load, clean cache, check remote, or purge.
 
         Args:
             action: One of:
                 - "status" — show loaded kernels and cache disk usage grouped by mission
-                - "download" — download kernels for a mission (requires mission param)
-                - "load" — download + load kernels for a mission
+                - "load" — download (if needed) and load kernels for a mission (requires mission param)
                 - "unload_all" — unload all kernels from memory (keeps files on disk)
                 - "delete" — delete cached files for a mission (requires mission param) or specific files (requires filenames param). Use "GENERIC" as mission to delete generic kernels.
                 - "check_remote" — check remote NAIF directory for new .bsp files not in the configured set (requires mission param, single-file missions only)
                 - "purge" — delete ALL cached kernel files and unload everything
-            mission: Mission name (required for "download", "load", "delete" by mission, and "check_remote")
+            mission: Mission name (required for "load", "delete" by mission, and "check_remote")
             filenames: List of specific filenames to delete (for "delete" action only)
 
         Returns:
             All actions return status. Additionally:
             - "status": loaded_kernels (list), loaded_count, cache (dict grouped by mission with file sizes).
-            - "download"/"load": message, loaded (list of loaded kernel filenames).
+            - "load": message, loaded (list of loaded kernel filenames).
             - "unload_all": message.
             - "delete": deleted (list), not_found (list), freed_bytes.
             - "check_remote": cache_size_mb, mission, configured (list), available (list), new_files (list).
@@ -457,26 +456,6 @@ def _create_server() -> "FastMCP":
                 "loaded_count": len(loaded),
                 "cache": cache,
             }
-
-        elif action == "download":
-            if not mission:
-                return {
-                    "status": "error",
-                    "message": "mission parameter required for download",
-                }
-            from .missions import resolve_mission
-
-            try:
-                _, mission_key = resolve_mission(mission)
-                km.ensure_mission_kernels(mission_key)
-                return {
-                    "status": "success",
-                    "cache_size_mb": _cache_size_mb(),
-                    "message": f"Kernels downloaded and loaded for {mission_key}",
-                    "loaded": km.list_loaded(),
-                }
-            except Exception as e:
-                return {"status": "error", "message": str(e)}
 
         elif action == "load":
             if not mission:
@@ -552,7 +531,7 @@ def _create_server() -> "FastMCP":
                 "status": "error",
                 "message": (
                     f"Unknown action '{action}'. "
-                    f"Use: status, download, load, unload_all, delete, check_remote, purge"
+                    f"Use: status, load, unload_all, delete, check_remote, purge"
                 ),
             }
 

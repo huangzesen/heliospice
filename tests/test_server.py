@@ -152,6 +152,15 @@ class TestMCPTools:
         )
         assert speed.iloc[0] == pytest.approx(29.78, rel=1e-6)
 
+    def test_download_action_removed(self):
+        """After removal, 'download' action should return unknown-action error."""
+        from xhelio_spice.server import _create_server
+        server = _create_server()
+        tool = server._tool_manager.get_tool("manage_kernels")
+        result = tool.fn(action="download", mission="PSP")
+        assert result["status"] == "error"
+        assert "Unknown action" in result["message"] or "download" in result["message"].lower()
+
     def test_server_has_six_tools(self):
         """Server registers exactly 6 tools after merge."""
         from xhelio_spice.server import _create_server
