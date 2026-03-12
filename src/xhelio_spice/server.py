@@ -84,7 +84,7 @@ def _create_server() -> "FastMCP":
         time: str,
         frame: str,
         observer: str,
-        output_file: str,
+        output_file: str = "",
         time_end: str = "",
         step: str = "1h",
     ) -> dict:
@@ -103,7 +103,7 @@ def _create_server() -> "FastMCP":
             time: UTC time in ISO 8601 format. For timeseries, this is the start time.
             frame: Coordinate frame (e.g., "ECLIPJ2000", "GSE", "RTN"). Use list_coordinate_frames to see all options.
             observer: Observer body (e.g., "SUN", "EARTH"). Use "EARTH" for geocentric.
-            output_file: File path where timeseries CSV data will be written. Parent directory must exist. Required but ignored for single-time queries.
+            output_file: File path for timeseries CSV output. Required when time_end is provided. Ignored for single-time queries.
             time_end: End time for timeseries (ISO 8601). Leave empty for single-time query.
             step: Time step for timeseries (e.g., "1m", "1h", "6h", "1d"). Only used when time_end is provided.
 
