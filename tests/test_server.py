@@ -152,6 +152,24 @@ class TestMCPTools:
         )
         assert speed.iloc[0] == pytest.approx(29.78, rel=1e-6)
 
+    @patch("xhelio_spice.kernel_manager.get_kernel_manager")
+    def test_list_missions_segmented_kernels_loaded(self, mock_get_km):
+        """Segmented missions should report kernels_loaded=True when segments are loaded."""
+        from xhelio_spice.server import _create_server
+        mock_km = MagicMock()
+        mock_km.get_cache_size_bytes.return_value = 0
+        mock_km._segmented_files_loaded = {"cas_2004_v25.bsp"}
+        mock_km.list_loaded.return_value = ["cas_2004_v25.bsp"]
+        mock_km._build_file_to_mission_map.return_value = {"cas_2004_v25.bsp": "CASSINI"}
+        mock_get_km.return_value = mock_km
+
+        server = _create_server()
+        tool = server._tool_manager.get_tool("list_spice_missions")
+        result = tool.fn()
+        cassini = next(m for m in result["missions"] if m["mission_key"] == "CASSINI")
+        assert cassini["kernels_loaded"] is True
+        assert cassini["segmented"] is True
+
     def test_download_action_removed(self):
         """After removal, 'download' action should return unknown-action error."""
         from xhelio_spice.server import _create_server

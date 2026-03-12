@@ -385,13 +385,19 @@ def _create_server() -> "FastMCP":
         km = get_kernel_manager()
         loaded = set(km.list_loaded())
 
+        file_map = km._build_file_to_mission_map()
         for m in missions:
             key = m["mission_key"]
-            kernel_files = MISSION_KERNELS.get(key, {})
-            m["kernels_loaded"] = (
-                all(f in loaded for f in kernel_files) if kernel_files else False
-            )
             m["segmented"] = key in SEGMENTED_MISSIONS
+            if key in MISSION_KERNELS:
+                kernel_files = MISSION_KERNELS[key]
+                m["kernels_loaded"] = all(f in loaded for f in kernel_files)
+            elif key in SEGMENTED_MISSIONS:
+                m["kernels_loaded"] = any(
+                    file_map.get(f) == key for f in km._segmented_files_loaded
+                )
+            else:
+                m["kernels_loaded"] = False
 
         return {
             "status": "success",
