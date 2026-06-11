@@ -163,6 +163,17 @@ Add to `claude_desktop_config.json`:
 | `list_coordinate_frames` | Available frames with descriptions |
 | `manage_kernels` | Kernel cache management |
 
+### MCP smoke test
+
+For a CI-safe MCP check that does not request kernel downloads, run:
+
+```bash
+uv run --extra mcp python scripts/smoke_mcp_list_tools.py --json
+```
+
+The smoke starts the stdio server with an isolated temporary kernel cache, runs
+MCP `initialize` + `list_tools`, and verifies the advertised tool names.
+
 ## License
 
 MIT
